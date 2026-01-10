@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PlayPal Design System - Sports Booking Platform */
+
+@layer base {
+  :root {
+    /* Background: Warm Off-White #F3E8DF */
+    --background: 27 43% 91%;
+    /* Foreground: Deep Maroon #452829 */
+    --foreground: 357 26% 21%;
+
+    /* Card: Soft Beige #FBF7F4 (Slightly lighter than background for pop) or #E8D1C5 per request? 
+       Let's stick to a very light beige for cards to keep readability high, 
+       blending the requested "Soft Beige" #E8D1C5 as a secondary surface or accent surface. 
+       Actually, standard design: Cards lighten up on dark backgrounds, darken on light? 
+       Let's try sticking close to the requested palette but ensure text passes contrast. 
+       #F3E8DF is quite light. Let's make cards slightly distinct: White or very light plain beige.
+       Let's use White #FFFFFF tint for cards to make them pop against the #F3E8DF background.
+    */
+    --card: 0 0% 100%;
+    --card-foreground: 357 26% 21%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 357 26% 21%;
+
+    /* Primary: Deep Maroon #452829 */
+    --primary: 357 26% 21%;
+    --primary-foreground: 27 43% 91%;
+    --primary-glow: 357 26% 30%;
+
+    /* Secondary: Soft Beige #E8D1C5 */
+    --secondary: 21 38% 84%;
+    --secondary-foreground: 357 26% 21%;
+
+    /* Muted: Lighter Beige */
+    --muted: 27 43% 88%;
+    --muted-foreground: 210 2% 45%;
+    /* Charcoal toned down */
+
+    /* Accent: Maybe a warm terracotta or keeping the sport colors? 
+       Let's use the Secondary Beige as accent base or a slight variation.
+    */
+    --accent: 21 38% 84%;
+    --accent-foreground: 357 26% 21%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders: Charcoal #57595B - low opacity for subtlety */
+    --border: 210 2% 35%;
+    /* We will use opacity in usage, but base color is charcoal */
+    /* Wait, tailwind uses opacity on the color variable usually? No, border-border means border-color: rgb(var(--border)). 
+       If I set this to pure Charcoal, borders will be very dark. 
+       Let's set it to a lighter gray-brown derived from the palette for general borders.
+       Let's use a 20% opacity Charcoal equivalent: 210 2% 85% roughly?
+       Let's set a custom soft border color: #D6CCC7 (Greyish beige) -> 21 16% 81%
+    */
+    --border: 21 16% 81%;
+    --input: 21 16% 81%;
+    --ring: 357 26% 21%;
+
+    --radius: 1rem;
+
+    /* Custom PlayPal tokens */
+    /* Updated gradients to Warm Maroon/Beige theme */
+    --gradient-hero: linear-gradient(135deg, hsl(357 26% 21%) 0%, hsl(357 24% 30%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(27 43% 96%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsla(0 0% 100% / 0.8) 0%, hsla(27 43% 91% / 0.6) 100%);
+
+    --shadow-soft: 0 4px 20px -2px hsla(357 26% 21% / 0.08);
+    --shadow-card: 0 8px 30px -4px hsla(357 26% 21% / 0.12);
+    --shadow-glow: 0 0 40px hsla(357 26% 21% / 0.2);
+    --shadow-hover: 0 12px 40px -8px hsla(357 26% 21% / 0.18);
+
+    /* Sport colors - Kept similar but slightly desaturated to fit premium feel */
+    --sport-cricket: 45 90% 48%;
+    --sport-football: 142 60% 30%;
+    --sport-badminton: 280 50% 55%;
+    --sport-tennis: 47 90% 45%;
+    --sport-pickleball: 199 70% 45%;
+
+    /* Sidebar */
+    --sidebar-background: 27 43% 91%;
+    --sidebar-foreground: 357 26% 21%;
+    --sidebar-primary: 357 26% 21%;
+    --sidebar-primary-foreground: 27 43% 91%;
+    --sidebar-accent: 21 38% 84%;
+    --sidebar-accent-foreground: 357 26% 21%;
+    --sidebar-border: 21 16% 81%;
+    --sidebar-ring: 357 26% 21%;
+  }
+
+  .dark {
+    /* Reverse/Dark Theme - Deep Chocolate/Maroon Backgrounds */
+    --background: 357 20% 12%;
+    --foreground: 27 43% 91%;
+
+    --card: 357 22% 16%;
+    --card-foreground: 27 43% 91%;
+
+    --popover: 357 22% 16%;
+    --popover-foreground: 27 43% 91%;
+
+    --primary: 27 43% 91%;
+    --primary-foreground: 357 26% 21%;
+
+    --secondary: 357 20% 20%;
+    --secondary-foreground: 27 43% 91%;
+
+    --muted: 357 20% 20%;
+    --muted-foreground: 27 20% 70%;
+
+    --accent: 357 20% 25%;
+    --accent-foreground: 27 43% 91%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 27 43% 91%;
+
+    --border: 357 20% 25%;
+    --input: 357 20% 25%;
+    --ring: 27 43% 91%;
+
+    --sidebar-background: 357 20% 10%;
+    --sidebar-foreground: 27 43% 91%;
+    --sidebar-primary: 27 43% 91%;
+    --sidebar-primary-foreground: 357 26% 21%;
+    --sidebar-accent: 357 20% 20%;
+    --sidebar-accent-foreground: 27 43% 91%;
+    --sidebar-border: 357 20% 25%;
+    --sidebar-ring: 27 43% 91%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .gradient-glass {
+    background: var(--gradient-glass);
+    backdrop-filter: blur(20px);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+
+  .text-gradient {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
