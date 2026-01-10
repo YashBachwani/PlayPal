@@ -184,48 +184,9 @@ const Invoice = () => {
                         <div className="flex gap-3 w-full sm:w-auto">
                             <Button
                                 className="flex-1 sm:flex-none bg-orange-600 hover:bg-orange-700 text-white"
-                                onClick={async () => {
-                                    try {
-                                        // 1. Initialize Cricket Data Layer
-                                        await CricketDataLayer.initialize();
-
-                                        // 2. Create match with booking data
-                                        const match = await CricketDataLayer.createMatch({
-                                            teamAId: booking.userName || 'Team A',
-                                            teamBId: 'Team B',
-                                            totalOvers: 20,
-                                            venue: {
-                                                name: booking.venueName,
-                                            },
-                                        });
-
-                                        // 3. Start match
-                                        await CricketDataLayer.startMatch(match.id);
-
-                                        // 4. Initialize Live Scoring Engine
-                                        const { LiveScoringEngine } = await import('@/lib/scoring');
-                                        const scoringEngine = new LiveScoringEngine({
-                                            matchId: match.id,
-                                            teamAId: booking.userName || 'Team A',
-                                            teamBId: 'Team B',
-                                        });
-                                        await scoringEngine.startMatch(
-                                            booking.userName || 'Team A',
-                                            'Team B',
-                                            20
-                                        );
-
-                                        // 5. Open TV broadcast in new window
-                                        window.open('/broadcast', '_blank', 'width=1920,height=1080');
-
-                                        // 6. Navigate to Match Mode (activates camera + AI)
-                                        navigate(`/match/${booking.id}`);
-
-                                        toast.success('Match started! Camera and AI systems activating...');
-                                    } catch (error) {
-                                        console.error('Failed to start match:', error);
-                                        toast.error('Failed to start match. Please try again.');
-                                    }
+                                onClick={() => {
+                                    toast.success('Starting match...');
+                                    navigate(`/match/${booking.id}`);
                                 }}
                             >
                                 <Play className="w-4 h-4 mr-2 fill-white" />

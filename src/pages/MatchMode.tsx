@@ -387,52 +387,52 @@ const MatchMode = () => {
                                     {/* Score Overlay for Fullscreen Mode */}
                                     {isCameraFullscreen && (
                                         <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4">
-                                            <div className="flex items-center justify-between">
-                                                {/* Score Display */}
-                                                <div className="flex items-center gap-6">
-                                                    <div className="bg-primary/90 backdrop-blur-sm px-4 py-2 rounded-lg">
-                                                        <div className="text-white text-sm font-medium mb-1">
-                                                            {battingTeam === 'teamA' ? 'Team A' : 'Team B'} Batting
+                                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                                {/* Score Display Group */}
+                                                <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 md:gap-6 w-full md:w-auto">
+                                                    <div className="bg-primary/90 backdrop-blur-sm px-3 py-2 md:px-4 rounded-lg flex-shrink-0">
+                                                        <div className="text-white text-xs md:text-sm font-medium mb-1">
+                                                            {battingTeam === 'teamA' ? 'Team A' : 'Team B'}
                                                         </div>
-                                                        <div className="text-white text-3xl font-bold">
+                                                        <div className="text-white text-2xl md:text-3xl font-bold leading-none">
                                                             {currentBattingScore.runs}/{currentBattingScore.wickets}
                                                         </div>
-                                                        <div className="text-white/80 text-sm">
-                                                            {currentBattingScore.overs.toFixed(1)} overs
+                                                        <div className="text-white/80 text-xs md:text-sm">
+                                                            {currentBattingScore.overs.toFixed(1)} ov
                                                         </div>
                                                     </div>
 
                                                     {/* Match Timer */}
-                                                    <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg">
-                                                        <div className="text-white/70 text-xs mb-1">Match Time</div>
-                                                        <div className="text-white text-xl font-bold">{formatTime(timer)}</div>
+                                                    <div className="bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg flex-shrink-0">
+                                                        <div className="text-white/70 text-[10px] md:text-xs mb-1">Time</div>
+                                                        <div className="text-white text-lg md:text-xl font-bold leading-none">{formatTime(timer)}</div>
                                                     </div>
 
-                                                    {/* AI Status */}
+                                                    {/* AI Status (Hidden on very small screens if needed) */}
                                                     {aiActive && (
-                                                        <div className="bg-green-500/90 backdrop-blur-sm px-3 py-2 rounded-lg flex items-center gap-2">
-                                                            <Activity className="w-4 h-4 text-white animate-pulse" />
-                                                            <span className="text-white text-sm font-medium">AI Active</span>
+                                                        <div className="hidden sm:flex bg-green-500/90 backdrop-blur-sm px-3 py-2 rounded-lg items-center gap-2">
+                                                            <Activity className="w-3 h-3 md:w-4 md:h-4 text-white animate-pulse" />
+                                                            <span className="text-white text-xs md:text-sm font-medium">AI On</span>
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 {/* Fullscreen Controls */}
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 flex-shrink-0">
                                                     <Button
                                                         size="sm"
                                                         onClick={toggleMatch}
                                                         variant={isPlaying ? "secondary" : "default"}
-                                                        className="bg-white/90 hover:bg-white text-black"
+                                                        className="bg-white/90 hover:bg-white text-black h-8 md:h-9 text-xs md:text-sm"
                                                     >
                                                         {isPlaying ? (
                                                             <>
-                                                                <Pause className="w-4 h-4 mr-2" />
+                                                                <Pause className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                                                                 Pause
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Play className="w-4 h-4 mr-2" />
+                                                                <Play className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                                                                 Resume
                                                             </>
                                                         )}
@@ -442,9 +442,9 @@ const MatchMode = () => {
                                                         size="sm"
                                                         onClick={toggleCameraFullscreen}
                                                         variant="secondary"
-                                                        className="bg-white/90 hover:bg-white text-black"
+                                                        className="bg-white/90 hover:bg-white text-black h-8 md:h-9"
                                                     >
-                                                        <Minimize className="w-4 h-4" />
+                                                        <Minimize className="w-3 h-3 md:w-4 md:h-4" />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -559,7 +559,7 @@ const MatchMode = () => {
                             >
                                 <h3 className="text-xl font-bold mb-4">Live Score</h3>
                                 <div className="text-center mb-4">
-                                    <div className="text-5xl font-bold">
+                                    <div className="text-4xl md:text-5xl font-bold">
                                         {currentBattingScore.runs}/{currentBattingScore.wickets}
                                     </div>
                                     <div className="opacity-80 mt-2">
@@ -589,30 +589,34 @@ const MatchMode = () => {
 
                                 {/* Batting Team Controls */}
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium">Runs</span>
-                                        <div className="flex gap-2">
+                                    <div className="flex bg-card/50 p-2 rounded-lg items-center justify-between flex-wrap gap-2">
+                                        <span className="font-medium text-sm">Runs</span>
+                                        <div className="flex gap-2 flex-wrap justify-end">
                                             <Button
                                                 size="sm"
                                                 variant="outline"
+                                                className="h-8 w-8 p-0"
                                                 onClick={() => updateScore(battingTeam, 'runs', -1)}
                                             >
                                                 <Minus className="w-4 h-4" />
                                             </Button>
                                             <Button
                                                 size="sm"
+                                                className="h-8 min-w-[3rem]"
                                                 onClick={() => updateScore(battingTeam, 'runs', 1)}
                                             >
                                                 +1
                                             </Button>
                                             <Button
                                                 size="sm"
+                                                className="h-8 min-w-[3rem]"
                                                 onClick={() => updateScore(battingTeam, 'runs', 4)}
                                             >
                                                 +4
                                             </Button>
                                             <Button
                                                 size="sm"
+                                                className="h-8 min-w-[3rem]"
                                                 onClick={() => updateScore(battingTeam, 'runs', 6)}
                                             >
                                                 +6
@@ -620,18 +624,20 @@ const MatchMode = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium">Wickets</span>
+                                    <div className="flex bg-card/50 p-2 rounded-lg items-center justify-between flex-wrap gap-2">
+                                        <span className="font-medium text-sm">Wickets</span>
                                         <div className="flex gap-2">
                                             <Button
                                                 size="sm"
                                                 variant="outline"
+                                                className="h-8 w-8 p-0"
                                                 onClick={() => updateScore(battingTeam, 'wickets', -1)}
                                             >
                                                 <Minus className="w-4 h-4" />
                                             </Button>
                                             <Button
                                                 size="sm"
+                                                className="h-8 w-8 p-0"
                                                 onClick={() => updateScore(battingTeam, 'wickets', 1)}
                                             >
                                                 <Plus className="w-4 h-4" />
@@ -639,18 +645,20 @@ const MatchMode = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium">Overs</span>
+                                    <div className="flex bg-card/50 p-2 rounded-lg items-center justify-between flex-wrap gap-2">
+                                        <span className="font-medium text-sm">Overs</span>
                                         <div className="flex gap-2">
                                             <Button
                                                 size="sm"
                                                 variant="outline"
+                                                className="h-8 w-8 p-0"
                                                 onClick={() => updateScore(battingTeam, 'overs', -0.1)}
                                             >
                                                 <Minus className="w-4 h-4" />
                                             </Button>
                                             <Button
                                                 size="sm"
+                                                className="h-8 w-8 p-0"
                                                 onClick={() => updateScore(battingTeam, 'overs', 0.1)}
                                             >
                                                 <Plus className="w-4 h-4" />
