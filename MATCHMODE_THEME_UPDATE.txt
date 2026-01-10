@@ -1,0 +1,10 @@
+I'll update MatchMode to use the light theme matching the rest of the PlayPal website.
+
+Key changes needed:
+1. Background: from dark gradient to bg-background (light)
+2. Text colors: from #F5F5DC to foreground/muted-foreground
+3. Card backgrounds: from gray-800 to bg-card with border
+4. Button styles: use standard variant styles
+5. Add pt-20 pb-12 to main for navbar spacing
+
+This will make MatchMode consistent with Dashboard, Venues, and other pages.

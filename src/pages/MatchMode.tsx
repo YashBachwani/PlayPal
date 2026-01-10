@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import { motion } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Trophy, Video, Plus, Minus, Activity, SwitchCamera } from "lucide-react";
+import { ArrowLeft, Play, Pause, Trophy, Video, Plus, Minus, Activity, SwitchCamera, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
@@ -33,6 +33,12 @@ const MatchMode = () => {
     const [aiActive, setAiActive] = useState(false);
     const trajectory = useRef<{ x: number, y: number, touchedGround: boolean }[]>([]);
     const lastScoringTime = useRef(0);
+
+    // Fullscreen state
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isCameraFullscreen, setIsCameraFullscreen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const cameraContainerRef = useRef<HTMLDivElement>(null);
 
     // Timer logic
     useEffect(() => {
@@ -232,328 +238,472 @@ const MatchMode = () => {
         });
     };
 
+    const toggleFullscreen = async () => {
+        if (!document.fullscreenElement) {
+            // Enter fullscreen
+            try {
+                if (containerRef.current) {
+                    await containerRef.current.requestFullscreen();
+                    setIsFullscreen(true);
+                    toast.success("Fullscreen mode activated");
+                }
+            } catch (error) {
+                console.error("Error entering fullscreen:", error);
+                toast.error("Fullscreen not supported");
+            }
+        } else {
+            // Exit fullscreen
+            try {
+                await document.exitFullscreen();
+                setIsFullscreen(false);
+                toast.info("Exited fullscreen");
+            } catch (error) {
+                console.error("Error exiting fullscreen:", error);
+            }
+        }
+    };
+
+    // Listen for fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+            // Check if camera container is in fullscreen
+            if (document.fullscreenElement === cameraContainerRef.current) {
+                setIsCameraFullscreen(true);
+            } else {
+                setIsCameraFullscreen(false);
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleCameraFullscreen = async () => {
+        if (!document.fullscreenElement) {
+            // Enter camera fullscreen
+            try {
+                if (cameraContainerRef.current) {
+                    await cameraContainerRef.current.requestFullscreen();
+                    setIsCameraFullscreen(true);
+                    toast.success("Camera fullscreen activated");
+                }
+            } catch (error) {
+                console.error("Error entering camera fullscreen:", error);
+                toast.error("Fullscreen not supported");
+            }
+        } else {
+            // Exit fullscreen
+            try {
+                await document.exitFullscreen();
+                setIsCameraFullscreen(false);
+                toast.info("Exited camera fullscreen");
+            } catch (error) {
+                console.error("Error exiting fullscreen:", error);
+            }
+        }
+    };
+
     const currentBattingScore = scores[battingTeam];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div ref={containerRef} className="min-h-screen bg-background">
             <Navbar />
 
-            <div className="container mx-auto px-4 py-6">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <Button
-                        variant="ghost"
-                        onClick={() => navigate('/dashboard')}
-                        className="text-[#F5F5DC]"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Dashboard
-                    </Button>
+            <main className="pt-20 pb-12">
+                <div className="container mx-auto px-4">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate('/dashboard')}
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Dashboard
+                        </Button>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Activity className={`w-5 h-5 ${aiActive ? 'text-green-500 animate-pulse' : 'text-gray-500'}`} />
-                            <span className="text-[#F5F5DC] text-sm">
-                                {aiActive ? 'AI Active' : 'AI Inactive'}
-                            </span>
-                        </div>
-                        <div className="text-[#F5F5DC] text-lg font-semibold">
-                            Match Time: {formatTime(timer)}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Activity className={`w-5 h-5 ${aiActive ? 'text-green-500 animate-pulse' : 'text-muted-foreground'}`} />
+                                <span className="text-sm font-medium">
+                                    {aiActive ? 'AI Active' : 'AI Inactive'}
+                                </span>
+                            </div>
+                            <div className="text-lg font-semibold">
+                                Match Time: {formatTime(timer)}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={toggleFullscreen}
+                                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                            >
+                                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                            </Button>
                         </div>
                     </div>
-                </div>
 
-                {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Camera Feed */}
-                    <div className="lg:col-span-2">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-2xl font-bold text-[#F5F5DC]">Live Camera Feed</h2>
-                                <div className="flex items-center gap-2">
-                                    <Video className="w-5 h-5 text-[#8B0000]" />
-                                    <span className="text-sm text-[#F5F5DC]/70">
-                                        {isPlaying ? 'Recording' : 'Ready'}
-                                    </span>
+                    {/* Main Content */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Camera Feed */}
+                        <div className="lg:col-span-2">
+                            <motion.div
+                                ref={cameraContainerRef}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-card border rounded-2xl p-6"
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-bold">Live Camera Feed</h2>
+                                    <div className="flex items-center gap-2">
+                                        <Video className="w-5 h-5 text-primary" />
+                                        <span className="text-sm text-muted-foreground">
+                                            {isPlaying ? 'Recording' : 'Ready'}
+                                        </span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={toggleCameraFullscreen}
+                                            title={isCameraFullscreen ? "Exit Camera Fullscreen" : "Maximize Camera"}
+                                            className="ml-2"
+                                        >
+                                            {isCameraFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                                <Webcam
-                                    ref={webcamRef}
-                                    audio={false}
-                                    videoConstraints={{
-                                        deviceId: selectedDeviceId,
-                                        width: 1280,
-                                        height: 720,
-                                    }}
-                                    className="w-full h-full object-cover"
-                                />
+                                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                                    <Webcam
+                                        ref={webcamRef}
+                                        audio={false}
+                                        videoConstraints={{
+                                            deviceId: selectedDeviceId,
+                                            width: 1280,
+                                            height: 720,
+                                        }}
+                                        className="w-full h-full object-cover"
+                                    />
 
-                                {/* Boundary Zone Indicators */}
-                                {aiActive && (
-                                    <>
-                                        <div className="absolute top-0 left-0 right-0 h-[20%] border-2 border-red-500/30 pointer-events-none">
-                                            <span className="absolute top-2 left-2 text-red-500 text-xs bg-black/50 px-2 py-1 rounded">
-                                                Boundary Zone (6)
-                                            </span>
+                                    {/* Score Overlay for Fullscreen Mode */}
+                                    {isCameraFullscreen && (
+                                        <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4">
+                                            <div className="flex items-center justify-between">
+                                                {/* Score Display */}
+                                                <div className="flex items-center gap-6">
+                                                    <div className="bg-primary/90 backdrop-blur-sm px-4 py-2 rounded-lg">
+                                                        <div className="text-white text-sm font-medium mb-1">
+                                                            {battingTeam === 'teamA' ? 'Team A' : 'Team B'} Batting
+                                                        </div>
+                                                        <div className="text-white text-3xl font-bold">
+                                                            {currentBattingScore.runs}/{currentBattingScore.wickets}
+                                                        </div>
+                                                        <div className="text-white/80 text-sm">
+                                                            {currentBattingScore.overs.toFixed(1)} overs
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Match Timer */}
+                                                    <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg">
+                                                        <div className="text-white/70 text-xs mb-1">Match Time</div>
+                                                        <div className="text-white text-xl font-bold">{formatTime(timer)}</div>
+                                                    </div>
+
+                                                    {/* AI Status */}
+                                                    {aiActive && (
+                                                        <div className="bg-green-500/90 backdrop-blur-sm px-3 py-2 rounded-lg flex items-center gap-2">
+                                                            <Activity className="w-4 h-4 text-white animate-pulse" />
+                                                            <span className="text-white text-sm font-medium">AI Active</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Fullscreen Controls */}
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={toggleMatch}
+                                                        variant={isPlaying ? "secondary" : "default"}
+                                                        className="bg-white/90 hover:bg-white text-black"
+                                                    >
+                                                        {isPlaying ? (
+                                                            <>
+                                                                <Pause className="w-4 h-4 mr-2" />
+                                                                Pause
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Play className="w-4 h-4 mr-2" />
+                                                                Resume
+                                                            </>
+                                                        )}
+                                                    </Button>
+
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={toggleCameraFullscreen}
+                                                        variant="secondary"
+                                                        className="bg-white/90 hover:bg-white text-black"
+                                                    >
+                                                        <Minimize className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="absolute bottom-0 left-0 right-0 h-[30%] border-2 border-yellow-500/30 pointer-events-none">
-                                            <span className="absolute bottom-2 left-2 text-yellow-500 text-xs bg-black/50 px-2 py-1 rounded">
-                                                Ground Zone (4)
-                                            </span>
-                                        </div>
-                                        <div className="absolute top-0 left-0 bottom-0 w-[10%] border-2 border-red-500/30 pointer-events-none" />
-                                        <div className="absolute top-0 right-0 bottom-0 w-[10%] border-2 border-red-500/30 pointer-events-none" />
-                                    </>
-                                )}
+                                    )}
 
-                                {/* Camera Controls */}
-                                <div className="absolute top-4 right-4 z-10 flex gap-2">
-                                    {/* Flip Camera Button */}
+                                    {/* Boundary Zone Indicators */}
+                                    {aiActive && (
+                                        <>
+                                            <div className="absolute top-0 left-0 right-0 h-[20%] border-2 border-red-500/30 pointer-events-none">
+                                                <span className="absolute top-2 left-2 text-red-500 text-xs bg-black/50 px-2 py-1 rounded">
+                                                    Boundary Zone (6)
+                                                </span>
+                                            </div>
+                                            <div className="absolute bottom-0 left-0 right-0 h-[30%] border-2 border-yellow-500/30 pointer-events-none">
+                                                <span className="absolute bottom-2 left-2 text-yellow-500 text-xs bg-black/50 px-2 py-1 rounded">
+                                                    Ground Zone (4)
+                                                </span>
+                                            </div>
+                                            <div className="absolute top-0 left-0 bottom-0 w-[10%] border-2 border-red-500/30 pointer-events-none" />
+                                            <div className="absolute top-0 right-0 bottom-0 w-[10%] border-2 border-red-500/30 pointer-events-none" />
+                                        </>
+                                    )}
+
+                                    {/* Camera Controls */}
+                                    <div className="absolute top-4 right-4 z-10 flex gap-2">
+                                        {/* Flip Camera Button */}
+                                        <Button
+                                            size="sm"
+                                            onClick={flipCamera}
+                                            disabled={devices.length < 2}
+                                            variant="secondary"
+                                            title="Flip Camera"
+                                        >
+                                            <SwitchCamera className="w-4 h-4" />
+                                        </Button>
+
+                                        {/* Camera Selection Dropdown */}
+                                        {devices.length > 1 && (
+                                            <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
+                                                <SelectTrigger className="w-[200px]">
+                                                    <SelectValue placeholder="Select Camera" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {devices.map((device) => (
+                                                        <SelectItem key={device.deviceId} value={device.deviceId}>
+                                                            {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
+
+                                    {!isPlaying && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                            <div className="text-center">
+                                                <Play className="w-16 h-16 text-white mx-auto mb-4" />
+                                                <p className="text-white text-lg">Press Start to begin match</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Controls */}
+                                <div className="flex flex-col sm:flex-row gap-4 mt-4">
                                     <Button
-                                        size="sm"
-                                        onClick={flipCamera}
-                                        disabled={devices.length < 2}
-                                        className="bg-gray-900/80 hover:bg-gray-800/90 text-[#F5F5DC] border border-[#8B0000]"
-                                        title="Flip Camera"
+                                        onClick={toggleMatch}
+                                        className="flex-1"
                                     >
-                                        <SwitchCamera className="w-4 h-4" />
+                                        {isPlaying ? (
+                                            <>
+                                                <Pause className="w-5 h-5 mr-2" />
+                                                Pause Match
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Play className="w-5 h-5 mr-2" />
+                                                Start Match
+                                            </>
+                                        )}
                                     </Button>
 
-                                    {/* Camera Selection Dropdown */}
-                                    {devices.length > 1 && (
-                                        <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
-                                            <SelectTrigger className="w-[200px] bg-gray-900/80 text-[#F5F5DC] border-[#8B0000]">
-                                                <SelectValue placeholder="Select Camera" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {devices.map((device) => (
-                                                    <SelectItem key={device.deviceId} value={device.deviceId}>
-                                                        {device.label || `Camera ${devices.indexOf(device) + 1}`}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                </div>
+                                    <Button
+                                        onClick={toggleAI}
+                                        disabled={!model}
+                                        variant={aiActive ? "default" : "secondary"}
+                                        className="flex-1"
+                                    >
+                                        <Activity className="w-5 h-5 mr-2" />
+                                        {aiActive ? 'AI On' : 'AI Off'}
+                                    </Button>
 
-                                {!isPlaying && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                        <div className="text-center">
-                                            <Play className="w-16 h-16 text-[#F5F5DC] mx-auto mb-4" />
-                                            <p className="text-[#F5F5DC] text-lg">Press Start to begin match</p>
-                                        </div>
+                                    <Button
+                                        onClick={endMatch}
+                                        variant="outline"
+                                    >
+                                        <Trophy className="w-5 h-5 mr-2" />
+                                        End Match
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        {/* Scoreboard & Controls */}
+                        <div className="space-y-6">
+                            {/* Live Score */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="bg-primary text-primary-foreground rounded-2xl p-6"
+                            >
+                                <h3 className="text-xl font-bold mb-4">Live Score</h3>
+                                <div className="text-center mb-4">
+                                    <div className="text-5xl font-bold">
+                                        {currentBattingScore.runs}/{currentBattingScore.wickets}
+                                    </div>
+                                    <div className="opacity-80 mt-2">
+                                        {currentBattingScore.overs.toFixed(1)} overs
+                                    </div>
+                                    <div className="text-sm opacity-60 mt-1">
+                                        {battingTeam === 'teamA' ? 'Team A' : 'Team B'} Batting
+                                    </div>
+                                </div>
+                                {aiActive && (
+                                    <div className="bg-white/10 rounded-lg p-2 text-center">
+                                        <p className="text-xs">
+                                            🤖 AI Auto-Scoring Active
+                                        </p>
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
 
-                            {/* Controls */}
-                            <div className="flex gap-4 mt-4">
-                                <Button
-                                    onClick={toggleMatch}
-                                    className="flex-1 bg-gradient-to-r from-[#8B0000] to-[#A52A2A] text-[#F5F5DC]"
-                                >
-                                    {isPlaying ? (
-                                        <>
-                                            <Pause className="w-5 h-5 mr-2" />
-                                            Pause Match
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Play className="w-5 h-5 mr-2" />
-                                            Start Match
-                                        </>
-                                    )}
-                                </Button>
+                            {/* Manual Controls */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="bg-card border rounded-2xl p-6"
+                            >
+                                <h3 className="text-lg font-bold mb-4">Manual Controls</h3>
 
-                                <Button
-                                    onClick={toggleAI}
-                                    disabled={!model}
-                                    className={`flex-1 ${aiActive ? 'bg-green-600' : 'bg-gray-600'} text-[#F5F5DC]`}
-                                >
-                                    <Activity className="w-5 h-5 mr-2" />
-                                    {aiActive ? 'AI On' : 'AI Off'}
-                                </Button>
+                                {/* Batting Team Controls */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium">Runs</span>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => updateScore(battingTeam, 'runs', -1)}
+                                            >
+                                                <Minus className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => updateScore(battingTeam, 'runs', 1)}
+                                            >
+                                                +1
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => updateScore(battingTeam, 'runs', 4)}
+                                            >
+                                                +4
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => updateScore(battingTeam, 'runs', 6)}
+                                            >
+                                                +6
+                                            </Button>
+                                        </div>
+                                    </div>
 
-                                <Button
-                                    onClick={endMatch}
-                                    variant="outline"
-                                    className="border-[#8B0000] text-[#F5F5DC]"
-                                >
-                                    <Trophy className="w-5 h-5 mr-2" />
-                                    End Match
-                                </Button>
-                            </div>
-                        </motion.div>
-                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium">Wickets</span>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => updateScore(battingTeam, 'wickets', -1)}
+                                            >
+                                                <Minus className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => updateScore(battingTeam, 'wickets', 1)}
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
 
-                    {/* Scoreboard & Controls */}
-                    <div className="space-y-6">
-                        {/* Live Score */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="bg-gradient-to-r from-[#8B0000] to-[#A52A2A] rounded-2xl p-6"
-                        >
-                            <h3 className="text-xl font-bold text-[#F5F5DC] mb-4">Live Score</h3>
-                            <div className="text-center mb-4">
-                                <div className="text-5xl font-bold text-[#F5F5DC]">
-                                    {currentBattingScore.runs}/{currentBattingScore.wickets}
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium">Overs</span>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => updateScore(battingTeam, 'overs', -0.1)}
+                                            >
+                                                <Minus className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => updateScore(battingTeam, 'overs', 0.1)}
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={switchInnings}
+                                        className="w-full mt-4"
+                                    >
+                                        Switch Innings
+                                    </Button>
                                 </div>
-                                <div className="text-[#F5F5DC]/80 mt-2">
-                                    {currentBattingScore.overs.toFixed(1)} overs
-                                </div>
-                                <div className="text-sm text-[#F5F5DC]/60 mt-1">
-                                    {battingTeam === 'teamA' ? 'Team A' : 'Team B'} Batting
-                                </div>
-                            </div>
-                            {aiActive && (
-                                <div className="bg-white/10 rounded-lg p-2 text-center">
-                                    <p className="text-[#F5F5DC] text-xs">
-                                        🤖 AI Auto-Scoring Active
-                                    </p>
-                                </div>
-                            )}
-                        </motion.div>
+                            </motion.div>
 
-                        {/* Manual Controls */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
-                        >
-                            <h3 className="text-lg font-bold text-[#F5F5DC] mb-4">Manual Controls</h3>
-
-                            {/* Batting Team Controls */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[#F5F5DC]">Runs</span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => updateScore(battingTeam, 'runs', -1)}
-                                            className="border-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => updateScore(battingTeam, 'runs', 1)}
-                                            className="bg-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            +1
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => updateScore(battingTeam, 'runs', 4)}
-                                            className="bg-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            +4
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => updateScore(battingTeam, 'runs', 6)}
-                                            className="bg-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            +6
-                                        </Button>
+                            {/* Team Scores */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="bg-card border rounded-2xl p-6"
+                            >
+                                <h3 className="text-lg font-bold mb-4">Teams</h3>
+                                <div className="space-y-3">
+                                    <div className={`p-3 rounded-lg ${battingTeam === 'teamA' ? 'bg-primary/10 border border-primary' : 'bg-secondary'}`}>
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-semibold">Team A</span>
+                                            <span className="text-xl font-bold">
+                                                {scores.teamA.runs}/{scores.teamA.wickets}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            {scores.teamA.overs.toFixed(1)} overs
+                                        </div>
+                                    </div>
+                                    <div className={`p-3 rounded-lg ${battingTeam === 'teamB' ? 'bg-primary/10 border border-primary' : 'bg-secondary'}`}>
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-semibold">Team B</span>
+                                            <span className="text-xl font-bold">
+                                                {scores.teamB.runs}/{scores.teamB.wickets}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            {scores.teamB.overs.toFixed(1)} overs
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[#F5F5DC]">Wickets</span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => updateScore(battingTeam, 'wickets', -1)}
-                                            className="border-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => updateScore(battingTeam, 'wickets', 1)}
-                                            className="bg-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[#F5F5DC]">Overs</span>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => updateScore(battingTeam, 'overs', -0.1)}
-                                            className="border-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => updateScore(battingTeam, 'overs', 0.1)}
-                                            className="bg-[#8B0000] text-[#F5F5DC]"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    onClick={switchInnings}
-                                    className="w-full bg-gradient-to-r from-[#8B0000] to-[#A52A2A] text-[#F5F5DC] mt-4"
-                                >
-                                    Switch Innings
-                                </Button>
-                            </div>
-                        </motion.div>
-
-                        {/* Team Scores */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
-                        >
-                            <h3 className="text-lg font-bold text-[#F5F5DC] mb-4">Teams</h3>
-                            <div className="space-y-3">
-                                <div className={`p-3 rounded-lg ${battingTeam === 'teamA' ? 'bg-[#8B0000]/20 border border-[#8B0000]' : 'bg-gray-700/30'}`}>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[#F5F5DC] font-semibold">Team A</span>
-                                        <span className="text-[#F5F5DC] text-xl font-bold">
-                                            {scores.teamA.runs}/{scores.teamA.wickets}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm text-[#F5F5DC]/60 mt-1">
-                                        {scores.teamA.overs.toFixed(1)} overs
-                                    </div>
-                                </div>
-                                <div className={`p-3 rounded-lg ${battingTeam === 'teamB' ? 'bg-[#8B0000]/20 border border-[#8B0000]' : 'bg-gray-700/30'}`}>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[#F5F5DC] font-semibold">Team B</span>
-                                        <span className="text-[#F5F5DC] text-xl font-bold">
-                                            {scores.teamB.runs}/{scores.teamB.wickets}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm text-[#F5F5DC]/60 mt-1">
-                                        {scores.teamB.overs.toFixed(1)} overs
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
+                            </motion.div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
