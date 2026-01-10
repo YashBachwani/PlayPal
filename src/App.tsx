@@ -18,6 +18,7 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import Invoice from "./pages/Invoice";
 import NotFound from "./pages/NotFound";
 import MatchMode from "./pages/MatchMode";
+import LiveBroadcast from "./pages/LiveBroadcast";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
                   <Route path="/venue/:id" element={<VenueDetails />} />
                   <Route path="/players" element={<Players />} />
                   <Route path="/match/:bookingId" element={<MatchMode />} />
+                  <Route path="/broadcast" element={<LiveBroadcast />} />
                   <Route path="/tournaments" element={<Tournaments />} />
                   <Route path="/owner-dashboard" element={<OwnerDashboard />} />
                   <Route path="/invoice/:id" element={<Invoice />} />
