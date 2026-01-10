@@ -348,7 +348,6 @@ const MatchMode = () => {
                         {/* Camera Feed */}
                         <div className="lg:col-span-2">
                             <motion.div
-                                ref={cameraContainerRef}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="bg-card border rounded-2xl p-6"
@@ -372,7 +371,7 @@ const MatchMode = () => {
                                     </div>
                                 </div>
 
-                                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                                <div ref={cameraContainerRef} className="relative bg-black rounded-lg overflow-hidden aspect-video">
                                     <Webcam
                                         ref={webcamRef}
                                         audio={false}
@@ -387,43 +386,43 @@ const MatchMode = () => {
                                     {/* Score Overlay for Fullscreen Mode */}
                                     {isCameraFullscreen && (
                                         <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4">
-                                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-4 h-full">
                                                 {/* Score Display Group */}
-                                                <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 md:gap-6 w-full md:w-auto">
-                                                    <div className="bg-primary/90 backdrop-blur-sm px-3 py-2 md:px-4 rounded-lg flex-shrink-0">
-                                                        <div className="text-white text-xs md:text-sm font-medium mb-1">
+                                                <div className="flex flex-wrap items-center gap-2 md:gap-6 w-full md:w-auto">
+                                                    <div className="bg-primary/90 backdrop-blur-sm px-2 py-1 md:px-4 md:py-2 rounded-lg flex-shrink-0 shadow-lg">
+                                                        <div className="text-white text-[10px] md:text-sm font-medium mb-0.5 md:mb-1 opacity-90">
                                                             {battingTeam === 'teamA' ? 'Team A' : 'Team B'}
                                                         </div>
-                                                        <div className="text-white text-2xl md:text-3xl font-bold leading-none">
+                                                        <div className="text-white text-xl md:text-3xl font-bold leading-none">
                                                             {currentBattingScore.runs}/{currentBattingScore.wickets}
                                                         </div>
-                                                        <div className="text-white/80 text-xs md:text-sm">
+                                                        <div className="text-white/80 text-[10px] md:text-sm leading-none mt-0.5">
                                                             {currentBattingScore.overs.toFixed(1)} ov
                                                         </div>
                                                     </div>
 
                                                     {/* Match Timer */}
-                                                    <div className="bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg flex-shrink-0">
-                                                        <div className="text-white/70 text-[10px] md:text-xs mb-1">Time</div>
-                                                        <div className="text-white text-lg md:text-xl font-bold leading-none">{formatTime(timer)}</div>
+                                                    <div className="bg-black/60 backdrop-blur-sm px-2 py-1 md:px-4 md:py-2 rounded-lg flex-shrink-0 shadow-lg border border-white/10">
+                                                        <div className="text-white/70 text-[10px] md:text-xs mb-0.5 md:mb-1">Time</div>
+                                                        <div className="text-white text-sm md:text-xl font-bold leading-none">{formatTime(timer)}</div>
                                                     </div>
 
-                                                    {/* AI Status (Hidden on very small screens if needed) */}
+                                                    {/* AI Status */}
                                                     {aiActive && (
-                                                        <div className="hidden sm:flex bg-green-500/90 backdrop-blur-sm px-3 py-2 rounded-lg items-center gap-2">
+                                                        <div className="flex bg-green-500/90 backdrop-blur-sm px-2 py-1 md:px-3 md:py-2 rounded-lg items-center gap-1 md:gap-2 shadow-lg">
                                                             <Activity className="w-3 h-3 md:w-4 md:h-4 text-white animate-pulse" />
-                                                            <span className="text-white text-xs md:text-sm font-medium">AI On</span>
+                                                            <span className="text-white text-[10px] md:text-sm font-medium">AI On</span>
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                {/* Fullscreen Controls */}
-                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                {/* Fullscreen Controls - Positioned absolutely on mobile for easier reach */}
+                                                <div className="flex items-center gap-2 absolute top-4 right-4 md:static">
                                                     <Button
                                                         size="sm"
                                                         onClick={toggleMatch}
                                                         variant={isPlaying ? "secondary" : "default"}
-                                                        className="bg-white/90 hover:bg-white text-black h-8 md:h-9 text-xs md:text-sm"
+                                                        className="bg-white/90 hover:bg-white text-black h-7 md:h-9 text-[10px] md:text-sm px-2 md:px-4 shadow-xl"
                                                     >
                                                         {isPlaying ? (
                                                             <>
@@ -442,7 +441,7 @@ const MatchMode = () => {
                                                         size="sm"
                                                         onClick={toggleCameraFullscreen}
                                                         variant="secondary"
-                                                        className="bg-white/90 hover:bg-white text-black h-8 md:h-9"
+                                                        className="bg-white/90 hover:bg-white text-black h-7 w-7 md:h-9 md:w-auto md:px-3 shadow-xl p-0 md:p-2"
                                                     >
                                                         <Minimize className="w-3 h-3 md:w-4 md:h-4" />
                                                     </Button>
