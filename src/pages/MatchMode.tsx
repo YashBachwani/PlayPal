@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import { motion } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Trophy, Video, Plus, Minus, Activity } from "lucide-react";
+import { ArrowLeft, Play, Pause, Trophy, Video, Plus, Minus, Activity, SwitchCamera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
@@ -218,6 +218,20 @@ const MatchMode = () => {
         toast.info(`${battingTeam === 'teamA' ? 'Team B' : 'Team A'} is now batting`);
     };
 
+    const flipCamera = () => {
+        if (devices.length < 2) {
+            toast.error("No other camera available");
+            return;
+        }
+
+        const currentIndex = devices.findIndex(d => d.deviceId === selectedDeviceId);
+        const nextIndex = (currentIndex + 1) % devices.length;
+        setSelectedDeviceId(devices[nextIndex].deviceId);
+        toast.success("Camera switched", {
+            description: devices[nextIndex].label || `Camera ${nextIndex + 1}`
+        });
+    };
+
     const currentBattingScore = scores[battingTeam];
 
     return (
@@ -298,9 +312,21 @@ const MatchMode = () => {
                                     </>
                                 )}
 
-                                {/* Camera Selection */}
-                                {devices.length > 1 && (
-                                    <div className="absolute top-4 right-4 z-10">
+                                {/* Camera Controls */}
+                                <div className="absolute top-4 right-4 z-10 flex gap-2">
+                                    {/* Flip Camera Button */}
+                                    <Button
+                                        size="sm"
+                                        onClick={flipCamera}
+                                        disabled={devices.length < 2}
+                                        className="bg-gray-900/80 hover:bg-gray-800/90 text-[#F5F5DC] border border-[#8B0000]"
+                                        title="Flip Camera"
+                                    >
+                                        <SwitchCamera className="w-4 h-4" />
+                                    </Button>
+
+                                    {/* Camera Selection Dropdown */}
+                                    {devices.length > 1 && (
                                         <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
                                             <SelectTrigger className="w-[200px] bg-gray-900/80 text-[#F5F5DC] border-[#8B0000]">
                                                 <SelectValue placeholder="Select Camera" />
@@ -313,8 +339,8 @@ const MatchMode = () => {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
 
                                 {!isPlaying && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">

@@ -116,6 +116,42 @@ const Navbar = () => {
         style={{ overflow: "hidden" }}
       >
         <div className="container mx-auto px-4 py-4 flex flex-col gap-4">
+          {/* User Profile/Dashboard Link for Mobile */}
+          {isAuthenticated && (
+            <Link
+              to={user?.role === "turf_owner" ? "/owner-dashboard" : "/dashboard"}
+              className="px-3 py-2 bg-primary/10 text-primary font-semibold rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-2"
+              onClick={() => setIsOpen(false)}
+            >
+              <User className="w-5 h-5" />
+              <div className="flex flex-col">
+                <span>{user?.name}</span>
+                <span className="text-xs text-muted-foreground">View Dashboard</span>
+              </div>
+            </Link>
+          )}
+
+          {/* Location Selector for Mobile */}
+          <div className="px-3 py-2 bg-secondary/50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">Location</span>
+            </div>
+            <select
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              value={selectedCity.name}
+              onChange={(e) => {
+                const city = cities.find(c => c.name === e.target.value);
+                if (city) setSelectedCity(city);
+              }}
+            >
+              {cities.map(city => (
+                <option key={city.name} value={city.name}>{city.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Navigation Links */}
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -126,9 +162,11 @@ const Navbar = () => {
               {link.name}
             </Link>
           ))}
+
+          {/* Auth Buttons */}
           <div className="flex gap-3 pt-2 border-t border-border">
             {isAuthenticated ? (
-              <Button className="flex-1" onClick={() => { logout(); navigate("/"); setIsOpen(false); }}>
+              <Button className="flex-1" variant="outline" onClick={() => { logout(); navigate("/"); setIsOpen(false); }}>
                 Logout
               </Button>
             ) : (
