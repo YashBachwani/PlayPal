@@ -37,6 +37,7 @@ const MatchMode = () => {
     // Fullscreen state
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isCameraFullscreen, setIsCameraFullscreen] = useState(false);
+    const [showMatchSummary, setShowMatchSummary] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const cameraContainerRef = useRef<HTMLDivElement>(null);
 
@@ -205,8 +206,8 @@ const MatchMode = () => {
     const endMatch = () => {
         setIsPlaying(false);
         setAiActive(false);
+        setShowMatchSummary(true);
         toast.success("Match ended!");
-        navigate('/dashboard');
     };
 
     const updateScore = (team: 'teamA' | 'teamB', type: 'runs' | 'wickets' | 'overs', delta: number) => {
@@ -711,6 +712,61 @@ const MatchMode = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Match Summary Modal */}
+            {showMatchSummary && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-card border-2 border-primary/20 rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative overflow-hidden"
+                    >
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-primary to-transparent" />
+
+                        <div className="text-center mb-8">
+                            <h2 className="text-4xl font-bold mb-2">Match Ends</h2>
+                            <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-xl font-bold animate-pulse">
+                                {scores.teamA.runs > scores.teamB.runs ? "🏆 Team A Wins! 🏆" :
+                                    scores.teamB.runs > scores.teamA.runs ? "🏆 Team B Wins! 🏆" : "🤝 It's a Tie! 🤝"}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 items-center gap-4 mb-8">
+                            <div className="text-center p-6 rounded-2xl bg-secondary/50 border border-border">
+                                <div className="text-xl font-bold mb-2 text-primary">Team A</div>
+                                <div className="text-5xl font-black mb-2">{scores.teamA.runs}/{scores.teamA.wickets}</div>
+                                <div className="text-sm text-muted-foreground font-medium">{scores.teamA.overs.toFixed(1)} Overs</div>
+                            </div>
+
+                            <div className="text-center">
+                                <div className="text-4xl font-black text-muted-foreground/20">VS</div>
+                            </div>
+
+                            <div className="text-center p-6 rounded-2xl bg-secondary/50 border border-border">
+                                <div className="text-xl font-bold mb-2 text-blue-500">Team B</div>
+                                <div className="text-5xl font-black mb-2">{scores.teamB.runs}/{scores.teamB.wickets}</div>
+                                <div className="text-sm text-muted-foreground font-medium">{scores.teamB.overs.toFixed(1)} Overs</div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <Button
+                                onClick={() => setShowMatchSummary(false)}
+                                variant="outline"
+                                className="flex-1 h-12"
+                            >
+                                Close
+                            </Button>
+                            <Button
+                                onClick={() => navigate('/dashboard')}
+                                className="flex-1 text-lg font-bold h-12"
+                            >
+                                Return to Dashboard
+                            </Button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };

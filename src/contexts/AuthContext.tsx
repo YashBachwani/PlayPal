@@ -214,9 +214,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const addPoints = (points: number) => {
     if (user) {
-      const updatedUser = { ...user, points: user.points + points };
+      const newPoints = user.points + points;
+      const updatedUser = { ...user, points: newPoints };
       setUser(updatedUser);
       localStorage.setItem("playpal_user", JSON.stringify(updatedUser));
+
+      // Persist to registered users list (database simulation) only for regular users
+      if (user.role === "user") {
+        const registeredUsers: StoredUser[] = JSON.parse(localStorage.getItem("playpal_registered_users") || "[]");
+        const index = registeredUsers.findIndex((u) => u.email === user.email);
+        if (index !== -1) {
+          registeredUsers[index].points = newPoints;
+          localStorage.setItem("playpal_registered_users", JSON.stringify(registeredUsers));
+        }
+      }
     }
   };
 
