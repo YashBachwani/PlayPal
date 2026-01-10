@@ -89,7 +89,7 @@ const VenueDetails = () => {
       <main className="pt-20 pb-12">
         <div className="container mx-auto px-4">
           {/* Image Gallery */}
-          <div className="relative h-[400px] rounded-2xl overflow-hidden mb-8">
+          <div className="relative h-[250px] md:h-[400px] rounded-2xl overflow-hidden mb-6 md:mb-8">
             <img
               src={venue.images[currentImageIndex]}
               alt={venue.name}
@@ -119,7 +119,7 @@ const VenueDetails = () => {
             )}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
             {/* Left - Details */}
             <div className="lg:col-span-2 space-y-6">
               <div>
@@ -171,7 +171,7 @@ const VenueDetails = () => {
 
             {/* Right - Booking */}
             <motion.div
-              className="bg-card border rounded-2xl p-6 h-fit sticky top-24"
+              className="bg-card border rounded-2xl p-4 md:p-6 h-fit lg:sticky lg:top-24"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
@@ -209,7 +209,7 @@ const VenueDetails = () => {
               {/* Time Slots */}
               <div className="mb-6">
                 <label className="text-sm font-medium mb-2 block">Select Time</label>
-                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
                   {slots.map(slot => (
                     <button
                       key={slot.time}
@@ -236,7 +236,7 @@ const VenueDetails = () => {
                   </div>
 
                   {(parseInt(selectedSlot.split(':')[0]) >= 20 || parseInt(selectedSlot.split(':')[0]) < 4) && (
-                    <div className="flex justify-between mb-2 text-amber-600">
+                    <div className="flex justify-between items-start gap-2 mb-2 text-amber-600">
                       <span className="flex items-center gap-1 text-xs font-medium">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                         Peak Hour Charge

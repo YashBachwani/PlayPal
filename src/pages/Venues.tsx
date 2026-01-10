@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Filter, Star, Users, Clock, IndianRupee } from "lucide-react";
+import { Search, MapPin, Filter } from "lucide-react";
+import VenueCard from "@/components/VenueCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
@@ -20,7 +21,7 @@ const Venues = () => {
 
   const filteredVenues = venues.filter(venue => {
     const matchesCity = venue.city.toLowerCase() === selectedCity.name.toLowerCase();
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       venue.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSport = !selectedSport || venue.sports.includes(selectedSport);
@@ -40,7 +41,7 @@ const Venues = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="pt-20 pb-12">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -97,43 +98,20 @@ const Venues = () => {
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Venues in {selectedCity.name}</h2>
             {filteredVenues.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredVenues.map((venue, index) => (
                   <motion.div
                     key={venue.id}
-                    className="bg-card border rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    onClick={() => navigate(`/venue/${venue.id}`)}
+                    className="h-full"
                   >
-                    <div className="relative h-48">
-                      <img src={venue.image} alt={venue.name} className="w-full h-full object-cover" />
-                      <div className="absolute top-3 left-3 px-2 py-1 bg-card/90 rounded-full text-xs font-medium">
-                        {venue.sports[0]}
-                      </div>
-                      <div className="absolute bottom-3 right-3 px-2 py-1 bg-card/90 rounded-lg flex items-center gap-1">
-                        <IndianRupee className="w-3 h-3" />
-                        <span className="font-bold">{venue.pricePerHour}</span>
-                        <span className="text-xs text-muted-foreground">/hr</span>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold mb-1">{venue.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                        <MapPin className="w-4 h-4" />
-                        {venue.location}
-                        <span className="text-primary">• {venue.distance}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          <span className="font-medium">{venue.rating}</span>
-                          <span className="text-muted-foreground">({venue.reviews})</span>
-                        </div>
-                        <span className="text-sm text-primary">{venue.slotsAvailable} slots available</span>
-                      </div>
-                    </div>
+                    <VenueCard
+                      {...venue}
+                      sport={venue.sports[0]}
+                      price={venue.pricePerHour}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -148,29 +126,20 @@ const Venues = () => {
           {otherCityVenues.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold mb-4">Venues in Other Cities</h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {otherCityVenues.map((venue, index) => (
                   <motion.div
                     key={venue.id}
-                    className="bg-card border rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    onClick={() => navigate(`/venue/${venue.id}`)}
+                    className="h-full"
                   >
-                    <div className="relative h-48">
-                      <img src={venue.image} alt={venue.name} className="w-full h-full object-cover" />
-                      <div className="absolute top-3 left-3 px-2 py-1 bg-card/90 rounded-full text-xs font-medium">
-                        {venue.city}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold mb-1">{venue.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4" />
-                        {venue.location}, {venue.city}
-                      </div>
-                    </div>
+                    <VenueCard
+                      {...venue}
+                      sport={venue.sports[0]}
+                      price={venue.pricePerHour}
+                    />
                   </motion.div>
                 ))}
               </div>

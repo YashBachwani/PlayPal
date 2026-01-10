@@ -90,9 +90,14 @@ const Footer = () => {
 
         {/* Bottom */}
         <div className="pt-8 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-background/60">
-            © 2025 PlayPal. All rights reserved.
-          </p>
+          <div className="flex flex-col md:items-start items-center gap-1">
+            <p className="text-sm text-background/60">
+              © 2025 PlayPal. All rights reserved.
+            </p>
+            <p className="text-sm text-background/60">
+              Developed by <span className="text-orange-500 font-medium">Yash Bachwani</span> & <span className="text-orange-500 font-medium">Mustafa Khericha</span>
+            </p>
+          </div>
           <div className="flex items-center gap-4">
             {socialLinks.map((social, index) => (
               <a

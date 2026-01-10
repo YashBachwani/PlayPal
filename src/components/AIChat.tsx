@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MessageCircle, X, Send, Bot, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -41,7 +42,7 @@ const AIChat = () => {
 
   const generateResponse = (userMessage: string): string => {
     const lower = userMessage.toLowerCase();
-    
+
     if (lower.includes("cricket")) {
       return "🏏 Great choice! I found 5 cricket turfs near you in Ahmedabad. The best option is **Elite Cricket Arena** in Satellite - it has slots available at 6 PM and 8 PM today for ₹1,200/hour. Would you like me to book one?";
     }
@@ -60,7 +61,7 @@ const AIChat = () => {
     if (lower.includes("weather")) {
       return "☀️ Today in Ahmedabad: 32°C, Sunny with clear skies. Perfect for outdoor sports! However, I'd recommend evening slots (after 5 PM) to avoid the heat.";
     }
-    
+
     return "I understand! Let me help you with that. Could you tell me which sport you're interested in and your preferred time? I'll find the best options for you.";
   };
 
@@ -154,11 +155,10 @@ const AIChat = () => {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === "user"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-secondary-foreground"
-                    }`}
+                      }`}
                   >
                     {message.role === "user" ? (
                       <User className="w-4 h-4" />
@@ -167,11 +167,10 @@ const AIChat = () => {
                     )}
                   </div>
                   <div
-                    className={`max-w-[75%] p-3 rounded-2xl ${
-                      message.role === "user"
+                    className={`max-w-[75%] p-3 rounded-2xl ${message.role === "user"
                         ? "bg-primary text-primary-foreground rounded-tr-none"
                         : "bg-secondary text-secondary-foreground rounded-tl-none"
-                    }`}
+                      }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>

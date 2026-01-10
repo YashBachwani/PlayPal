@@ -28,8 +28,8 @@ const OwnerDashboard = () => {
   const todayBookings = bookings.filter(b => b.date === selectedDate && b.status !== "Cancelled");
   const slots = getAvailableSlots(owner.turfId, selectedDate);
 
-  const totalRevenue = bookings.filter(b => b.status === "Completed").reduce((sum, b) => sum + b.totalAmount, 0);
-  const todayRevenue = todayBookings.reduce((sum, b) => sum + b.paidAmount, 0);
+  const totalRevenue = bookings.filter(b => b.status === "Completed" || b.status === "Confirmed").reduce((sum, b) => sum + b.totalAmount, 0);
+  const todayRevenue = todayBookings.reduce((sum, b) => sum + b.totalAmount, 0);
 
   const handleAddManualBooking = () => {
     if (!manualBooking.name || !manualBooking.phone || !manualBooking.slot) {
@@ -44,8 +44,8 @@ const OwnerDashboard = () => {
       date: selectedDate,
       timeSlot: manualBooking.slot,
       duration: 1,
-      totalAmount: 1000,
-      paidAmount: 1000,
+      totalAmount: venue?.pricePerHour || 1000,
+      paidAmount: venue?.pricePerHour || 1000,
       remainingAmount: 0,
       status: "Confirmed",
       userId: "manual",
@@ -69,41 +69,41 @@ const OwnerDashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b sticky top-0 z-40">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-xl font-bold">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+            <span className="text-xl font-bold shrink-0">
               <span className="text-foreground">P</span>
               <span className="text-primary">l</span>
-              <span className="text-foreground">ayPal</span>
+              <span className="hidden md:inline text-foreground">ayPal</span>
             </span>
-            <span className="text-muted-foreground">|</span>
-            <span className="font-medium">{owner.turfName}</span>
+            <span className="text-muted-foreground shrink-0">|</span>
+            <span className="font-medium truncate">{owner.turfName}</span>
           </div>
-          <Button variant="outline" onClick={() => { logout(); navigate("/"); }}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
+          <Button variant="outline" size="sm" onClick={() => { logout(); navigate("/"); }} className="shrink-0">
+            <LogOut className="w-4 h-4 md:mr-2" />
+            <span className="hidden md:inline">Logout</span>
           </Button>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-card border rounded-xl p-6">
-            <p className="text-muted-foreground text-sm">Today's Bookings</p>
-            <p className="text-3xl font-bold">{todayBookings.length}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-card border rounded-xl p-4 md:p-6">
+            <p className="text-muted-foreground text-xs md:text-sm">Today's Bookings</p>
+            <p className="text-2xl md:text-3xl font-bold">{todayBookings.length}</p>
           </div>
-          <div className="bg-card border rounded-xl p-6">
-            <p className="text-muted-foreground text-sm">Today's Revenue</p>
-            <p className="text-3xl font-bold text-primary">₹{todayRevenue.toLocaleString()}</p>
+          <div className="bg-card border rounded-xl p-4 md:p-6">
+            <p className="text-muted-foreground text-xs md:text-sm">Today's Revenue</p>
+            <p className="text-2xl md:text-3xl font-bold text-primary">₹{todayRevenue.toLocaleString()}</p>
           </div>
-          <div className="bg-card border rounded-xl p-6">
-            <p className="text-muted-foreground text-sm">Total Bookings</p>
-            <p className="text-3xl font-bold">{bookings.length}</p>
+          <div className="bg-card border rounded-xl p-4 md:p-6">
+            <p className="text-muted-foreground text-xs md:text-sm">Total Bookings</p>
+            <p className="text-2xl md:text-3xl font-bold">{bookings.length}</p>
           </div>
-          <div className="bg-card border rounded-xl p-6">
-            <p className="text-muted-foreground text-sm">Total Revenue</p>
-            <p className="text-3xl font-bold text-primary">₹{totalRevenue.toLocaleString()}</p>
+          <div className="bg-card border rounded-xl p-4 md:p-6">
+            <p className="text-muted-foreground text-xs md:text-sm">Total Revenue</p>
+            <p className="text-2xl md:text-3xl font-bold text-primary">₹{totalRevenue.toLocaleString()}</p>
           </div>
         </div>
 
@@ -111,9 +111,9 @@ const OwnerDashboard = () => {
           {/* Calendar & Slots */}
           <div className="lg:col-span-2">
             {/* Date Picker */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-xl font-bold">Booking Calendar</h2>
-              <Button onClick={() => setShowAddBooking(true)}>
+              <Button onClick={() => setShowAddBooking(true)} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Manual Booking
               </Button>
@@ -140,15 +140,14 @@ const OwnerDashboard = () => {
             {/* Time Slots Grid */}
             <div className="bg-card border rounded-xl p-6">
               <h3 className="font-semibold mb-4">Time Slots</h3>
-              <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 {slots.map(slot => {
                   const booking = todayBookings.find(b => b.timeSlot === slot.time);
                   return (
                     <div
                       key={slot.time}
-                      className={`p-3 rounded-lg text-center ${
-                        booking ? 'bg-primary/10 border-primary border' : 'bg-secondary'
-                      }`}
+                      className={`p-3 rounded-lg text-center ${booking ? 'bg-primary/10 border-primary border' : 'bg-secondary'
+                        }`}
                     >
                       <div className="font-medium">{slot.time}</div>
                       {booking && (

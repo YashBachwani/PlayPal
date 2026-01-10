@@ -54,7 +54,7 @@ const Hero = () => {
     <section
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="relative min-h-[110vh] pt-32 pb-20 overflow-hidden flex items-center justify-center bg-background"
+      className="relative min-h-[110vh] pt-24 md:pt-32 pb-20 overflow-hidden flex items-center justify-center bg-background"
     >
       {/* Immersive Background */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
@@ -132,7 +132,7 @@ const Hero = () => {
                 <input
                   type="text"
                   placeholder="Search 'Cricket in Ahmedabad'..."
-                  className="flex-1 bg-transparent outline-none text-lg text-foreground placeholder:text-muted-foreground/60"
+                  className="flex-1 bg-transparent outline-none text-lg text-foreground placeholder:text-muted-foreground/60 min-w-0"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -148,7 +148,7 @@ const Hero = () => {
             </div>
 
             {/* Quick Filters */}
-            <div className="absolute top-full left-0 right-0 mt-4 flex items-center justify-center gap-3">
+            <div className="absolute top-full left-0 right-0 mt-4 flex flex-wrap items-center justify-center gap-3">
               {sports.map((sport, i) => (
                 <motion.button
                   key={sport.name}
