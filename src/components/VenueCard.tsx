@@ -118,7 +118,7 @@ const VenueCard = ({
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md group-hover:shadow-lg transition-all"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/venues/${id}`);
+            navigate(`/venue/${id}`);
           }}
         >
           Book Now
