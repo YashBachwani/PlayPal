@@ -40,10 +40,9 @@ const Invoice = () => {
 
         try {
             const canvas = await html2canvas(invoiceRef.current, {
-                scale: 2,
                 logging: false,
                 useCORS: true,
-                backgroundColor: "#ffffff"
+                background: "#ffffff"
             });
 
             const imgData = canvas.toDataURL("image/png");
@@ -192,7 +191,7 @@ const Invoice = () => {
 
                                         // 2. Create match with booking data
                                         const match = await CricketDataLayer.createMatch({
-                                            teamAId: booking.teamName || 'Team A',
+                                            teamAId: booking.userName || 'Team A',
                                             teamBId: 'Team B',
                                             totalOvers: 20,
                                             venue: {
@@ -207,11 +206,11 @@ const Invoice = () => {
                                         const { LiveScoringEngine } = await import('@/lib/scoring');
                                         const scoringEngine = new LiveScoringEngine({
                                             matchId: match.id,
-                                            teamAId: booking.teamName || 'Team A',
+                                            teamAId: booking.userName || 'Team A',
                                             teamBId: 'Team B',
                                         });
                                         await scoringEngine.startMatch(
-                                            booking.teamName || 'Team A',
+                                            booking.userName || 'Team A',
                                             'Team B',
                                             20
                                         );

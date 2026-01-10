@@ -14,8 +14,8 @@ import type {
     DetectionConfig,
     DetectionStats,
     Pose,
-    DEFAULT_CONFIG,
 } from './types';
+import { DEFAULT_CONFIG } from './types';
 
 export class DetectionEngine {
     private cocoModel: cocoSsd.ObjectDetection | null = null;

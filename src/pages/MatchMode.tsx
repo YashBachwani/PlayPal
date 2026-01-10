@@ -61,6 +61,27 @@ const MatchMode = () => {
                     teamBId: 'team-b',
                 });
 
+                // Create teams if they don't exist
+                try {
+                    await CricketDataLayer.createTeam({
+                        name: 'Team A',
+                        playerIds: [],
+                    });
+                } catch (error) {
+                    // Team might already exist, ignore error
+                    console.log('Team A already exists or error creating:', error);
+                }
+
+                try {
+                    await CricketDataLayer.createTeam({
+                        name: 'Team B',
+                        playerIds: [],
+                    });
+                } catch (error) {
+                    // Team might already exist, ignore error
+                    console.log('Team B already exists or error creating:', error);
+                }
+
                 // Load saved match or start new
                 const saved = scoringEngine.loadFromLocalStorage();
                 if (saved && saved.isLive) {
@@ -156,12 +177,14 @@ const MatchMode = () => {
 
                         // Show toast for event
                         if (event.type === 'SCORING') {
-                            toast.success(`${event.runs} runs!`, {
-                                description: event.boundaryType,
+                            const scoringEvent = event as unknown as { runs: number; boundaryType?: string };
+                            toast.success(`${scoringEvent.runs} runs!`, {
+                                description: scoringEvent.boundaryType || 'Runs scored',
                             });
                         } else if (event.type === 'DISMISSAL') {
+                            const dismissalEvent = event as unknown as { dismissalType: string };
                             toast.error(`Wicket!`, {
-                                description: event.dismissalType,
+                                description: dismissalEvent.dismissalType,
                             });
                         }
                     }
