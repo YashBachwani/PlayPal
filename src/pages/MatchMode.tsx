@@ -131,8 +131,8 @@ const MatchMode = () => {
         // For now we rely on the React debug overlay below
     };
 
-    const handleScore = (team: "teamA" | "teamB") => {
-        setScores(prev => ({ ...prev, [team]: prev[team] + 1 }));
+    const handleScore = (team: "teamA" | "teamB", points: number = 1) => {
+        setScores(prev => ({ ...prev, [team]: Math.max(0, prev[team] + points) }));
     };
 
     const formatTime = (seconds: number) => {
@@ -143,19 +143,34 @@ const MatchMode = () => {
 
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined);
+    const [cameraError, setCameraError] = useState<string | null>(null);
 
     useEffect(() => {
         const handleDevices = (mediaDevices: MediaDeviceInfo[]) => {
             const videoDevices = mediaDevices.filter(({ kind }) => kind === "videoinput");
             setDevices(videoDevices);
             if (videoDevices.length > 0 && !selectedDeviceId) {
-                // Prefer back camera if available (usually 'environment' in label) or just the last one
                 const backCamera = videoDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
                 setSelectedDeviceId(backCamera ? backCamera.deviceId : videoDevices[0].deviceId);
             }
         };
 
-        navigator.mediaDevices.enumerateDevices().then(handleDevices);
+        if (navigator.mediaDevices?.enumerateDevices) {
+            navigator.mediaDevices.enumerateDevices()
+                .then(handleDevices)
+                .catch(err => {
+                    console.error("Error enumerating devices:", err);
+                    setCameraError("Could not access camera devices. Permission denied or insecure connection.");
+                });
+        } else {
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            let errorMsg = "Camera API not supported in this browser.";
+            if (!isLocalhost && window.location.protocol !== 'https:') {
+                errorMsg = "Camera blocked! You are using an insecure connection (HTTP). Please use localhost or HTTPS.";
+            }
+            setCameraError(errorMsg);
+            toast.error("Camera Access Failed", { description: errorMsg });
+        }
     }, []);
 
     return (
@@ -171,7 +186,12 @@ const MatchMode = () => {
                         <div className="text-center">
                             <h3 className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-1">Team A</h3>
                             <span className="text-4xl font-bold text-primary">{scores.teamA}</span>
-                            <Button variant="ghost" size="sm" className="h-6 text-[10px] bg-white/5 hover:bg-white/10 mt-1" onClick={() => handleScore('teamA')}>+1</Button>
+                            <div className="flex gap-1 mt-1">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10 text-red-400" onClick={() => handleScore('teamA', -1)}>-1</Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10" onClick={() => handleScore('teamA', 1)}>+1</Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10" onClick={() => handleScore('teamA', 4)}>+4</Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10" onClick={() => handleScore('teamA', 6)}>+6</Button>
+                            </div>
                         </div>
 
                         <div className="flex flex-col items-center">
@@ -184,19 +204,37 @@ const MatchMode = () => {
                         <div className="text-center">
                             <h3 className="text-muted-foreground text-xs uppercase tracking-widest font-bold mb-1">Team B</h3>
                             <span className="text-4xl font-bold text-blue-400">{scores.teamB}</span>
-                            <Button variant="ghost" size="sm" className="h-6 text-[10px] bg-white/5 hover:bg-white/10 mt-1" onClick={() => handleScore('teamB')}>+1</Button>
+                            <div className="flex gap-1 mt-1">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10 text-red-400" onClick={() => handleScore('teamB', -1)}>-1</Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10" onClick={() => handleScore('teamB', 1)}>+1</Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10" onClick={() => handleScore('teamB', 4)}>+4</Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[10px] bg-white/5 hover:bg-white/10" onClick={() => handleScore('teamB', 6)}>+6</Button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Camera Feed Area */}
                 <div className="flex-1 relative bg-zinc-900 mx-4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                    <Webcam
-                        ref={webcamRef}
-                        audio={false}
-                        videoConstraints={{ deviceId: selectedDeviceId }}
-                        className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    {cameraError ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-zinc-900/90 z-30">
+                            <Video className="w-16 h-16 text-red-500 mb-4 opacity-50" />
+                            <h3 className="text-xl font-bold text-red-500 mb-2">Camera Access Blocked</h3>
+                            <p className="text-muted-foreground max-w-md">{cameraError}</p>
+                            <p className="text-xs text-muted-foreground mt-4 bg-black/50 p-3 rounded-lg border border-white/5">
+                                <strong>Tip:</strong> If testing on mobile via IP (192.168...), browsers block camera access for security.
+                                <br />Try using a secure tunnel (ngrok) or test on localhost.
+                            </p>
+                        </div>
+                    ) : (
+                        <Webcam
+                            ref={webcamRef}
+                            audio={false}
+                            videoConstraints={{ deviceId: selectedDeviceId }}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onUserMediaError={(err) => setCameraError("Camera permission denied currently.")}
+                        />
+                    )}
 
                     {/* Device Selector (Top Right) */}
                     <div className="absolute top-4 right-4 z-20">
@@ -272,8 +310,8 @@ const MatchMode = () => {
                         <Trophy className="w-4 h-4 mr-2 text-primary" /> Finish & Save
                     </Button>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
