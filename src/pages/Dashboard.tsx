@@ -109,7 +109,7 @@ const Dashboard = () => {
 
                     {activeTab === "upcoming" && (
                       <div className="flex gap-2 w-full mt-4">
-                        <Button className="flex-1" variant="outline" onClick={() => navigate(`/booking/${booking.id}/invoice`)}>
+                        <Button className="flex-1" variant="outline" onClick={() => navigate(`/invoice/${booking.id}`)}>
                           View Invoice
                         </Button>
                         <Button className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 border-0 text-white shadow-lg shadow-orange-500/20" onClick={() => navigate(`/match/${booking.id}`)}>
@@ -119,7 +119,7 @@ const Dashboard = () => {
                     )}
 
                     {activeTab !== "upcoming" && (
-                      <Button className="w-full mt-4" variant="outline" onClick={() => navigate(`/booking/${booking.id}/invoice`)}>
+                      <Button className="w-full mt-4" variant="outline" onClick={() => navigate(`/invoice/${booking.id}`)}>
                         View Invoice
                       </Button>
                     )}
