@@ -1,275 +1,174 @@
 import { useState, useRef, useEffect } from "react";
+import Webcam from "react-webcam";
 import { motion } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Trophy, Video, Target, Activity } from "lucide-react";
+import { ArrowLeft, Play, Pause, Trophy, Video, Plus, Minus, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
-import { CameraModule } from "@/lib/camera";
-import { DetectionEngine } from "@/lib/detection";
-import { RuleEngine } from "@/lib/rules";
-import { LiveScoringEngine } from "@/lib/scoring";
-import { predictionEngine } from "@/lib/predictions";
-import { careerEngine } from "@/lib/career";
-import { CricketDataLayer } from "@/lib/cricket";
-import type { LiveScore } from "@/lib/scoring";
-import type { NextBallPrediction } from "@/lib/predictions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import * as tf from "@tensorflow/tfjs";
+import * as cocoSsd from "@tensorflow-models/coco-ssd";
 
 const MatchMode = () => {
     const { bookingId } = useParams();
     const navigate = useNavigate();
+    const webcamRef = useRef<Webcam>(null);
 
     // Core state
     const [isPlaying, setIsPlaying] = useState(false);
-    const [liveScore, setLiveScore] = useState<LiveScore | null>(null);
-    const [prediction, setPrediction] = useState<NextBallPrediction | null>(null);
-    const [systemStatus, setSystemStatus] = useState("Initializing...");
+    const [timer, setTimer] = useState(0);
+    const [scores, setScores] = useState({
+        teamA: { runs: 0, wickets: 0, overs: 0 },
+        teamB: { runs: 0, wickets: 0, overs: 0 },
+    });
+    const [battingTeam, setBattingTeam] = useState<'teamA' | 'teamB'>('teamA');
 
-    // Module instances
-    const cameraRef = useRef<CameraModule | null>(null);
-    const detectorRef = useRef<DetectionEngine | null>(null);
-    const ruleEngineRef = useRef<RuleEngine | null>(null);
-    const scoringEngineRef = useRef<LiveScoringEngine | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const detectionLoopRef = useRef<number>(0);
+    // Camera device selection
+    const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
 
-    // Initialize all systems
+    // AI Detection state
+    const [model, setModel] = useState<cocoSsd.ObjectDetection | null>(null);
+    const [aiActive, setAiActive] = useState(false);
+    const trajectory = useRef<{ x: number, y: number, touchedGround: boolean }[]>([]);
+    const lastScoringTime = useRef(0);
+
+    // Timer logic
     useEffect(() => {
-        const initializeSystems = async () => {
-            try {
-                setSystemStatus("Initializing Cricket Data Layer...");
-                await CricketDataLayer.initialize();
-
-                setSystemStatus("Loading AI models...");
-                const detector = new DetectionEngine();
-                await detector.initialize();
-                detectorRef.current = detector;
-
-                setSystemStatus("Initializing camera...");
-                const camera = new CameraModule();
-                cameraRef.current = camera;
-
-                setSystemStatus("Setting up rule engine...");
-                const ruleEngine = new RuleEngine();
-                ruleEngineRef.current = ruleEngine;
-
-                setSystemStatus("Initializing scoring engine...");
-                const scoringEngine = new LiveScoringEngine({
-                    matchId: bookingId || 'match-1',
-                    teamAId: 'team-a',
-                    teamBId: 'team-b',
-                });
-
-                // Create teams if they don't exist
-                try {
-                    await CricketDataLayer.createTeam({
-                        name: 'Team A',
-                        playerIds: [],
-                    });
-                } catch (error) {
-                    // Team might already exist, ignore error
-                    console.log('Team A already exists or error creating:', error);
-                }
-
-                try {
-                    await CricketDataLayer.createTeam({
-                        name: 'Team B',
-                        playerIds: [],
-                    });
-                } catch (error) {
-                    // Team might already exist, ignore error
-                    console.log('Team B already exists or error creating:', error);
-                }
-
-                // Load saved match or start new
-                const saved = scoringEngine.loadFromLocalStorage();
-                if (saved && saved.isLive) {
-                    setLiveScore(saved);
-                    toast.success("Resumed live match");
-                } else {
-                    await scoringEngine.startMatch('Team A', 'Team B', 20);
-                    setLiveScore(scoringEngine.getLiveScore());
-                }
-
-                // Subscribe to score updates
-                scoringEngine.onScoreUpdate((score) => {
-                    setLiveScore(score);
-                });
-
-                scoringEngineRef.current = scoringEngine;
-
-                setSystemStatus("All systems ready!");
-                toast.success("Match systems initialized");
-
-            } catch (error) {
-                console.error("System initialization error:", error);
-                setSystemStatus("Error initializing systems");
-                toast.error("Failed to initialize match systems");
-            }
-        };
-
-        initializeSystems();
-
-        return () => {
-            // Cleanup
-            if (cameraRef.current) {
-                cameraRef.current.stopCamera();
-            }
-        };
-    }, [bookingId]);
-
-    // Start/Stop match
-    const toggleMatch = async () => {
-        if (!isPlaying) {
-            // Start match
-            try {
-                if (cameraRef.current && videoRef.current) {
-                    await cameraRef.current.startCamera(videoRef.current);
-                    startDetectionLoop();
-                    setIsPlaying(true);
-                    toast.success("Match started! AI detection active");
-                }
-            } catch (error) {
-                console.error("Failed to start camera:", error);
-                toast.error("Failed to start camera. Please check permissions.");
-            }
-        } else {
-            // Pause match
-            if (cameraRef.current) {
-                cameraRef.current.stopCamera();
-            }
-            stopDetectionLoop();
-            setIsPlaying(false);
-            toast.info("Match paused");
+        let interval: NodeJS.Timeout;
+        if (isPlaying) {
+            interval = setInterval(() => {
+                setTimer(prev => prev + 1);
+            }, 1000);
         }
-    };
+        return () => clearInterval(interval);
+    }, [isPlaying]);
 
-    // Detection loop
-    const startDetectionLoop = () => {
+    // Get camera devices
+    useEffect(() => {
+        const getDevices = async () => {
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                try {
+                    const deviceList = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = deviceList.filter(device => device.kind === 'videoinput');
+                    setDevices(videoDevices);
+                    if (videoDevices.length > 0 && !selectedDeviceId) {
+                        setSelectedDeviceId(videoDevices[0].deviceId);
+                    }
+                } catch (error) {
+                    console.error("Error getting devices:", error);
+                }
+            }
+        };
+        getDevices();
+    }, [selectedDeviceId]);
+
+    // Initialize AI model
+    useEffect(() => {
+        const loadModel = async () => {
+            try {
+                await tf.ready();
+                const loadedModel = await cocoSsd.load();
+                setModel(loadedModel);
+                toast.success("AI Detection Ready", { description: "Ball tracking enabled" });
+            } catch (error) {
+                console.error("Error loading model:", error);
+                toast.error("AI model failed to load");
+            }
+        };
+        loadModel();
+    }, []);
+
+    // AI Detection Loop
+    useEffect(() => {
+        let animationFrameId: number;
+
         const detect = async () => {
-            if (!cameraRef.current || !detectorRef.current || !ruleEngineRef.current || !scoringEngineRef.current) {
-                detectionLoopRef.current = requestAnimationFrame(detect);
-                return;
-            }
+            if (model && webcamRef.current && webcamRef.current.video && isPlaying && aiActive) {
+                const video = webcamRef.current.video;
 
-            try {
-                // Get frame from camera
-                const frame = cameraRef.current.getFrame();
+                if (video.readyState === 4) {
+                    try {
+                        const predictions = await model.detect(video);
 
-                if (frame) {
-                    // Run AI detection
-                    const detections = await detectorRef.current.detectAll(frame);
+                        // Filter for sports ball
+                        const ball = predictions.find(p => p.class === 'sports ball' && p.score > 0.6);
 
-                    // Draw detections on canvas
-                    drawDetections(detections);
+                        if (ball) {
+                            const [x, y, width, height] = ball.bbox;
+                            const centerX = x + width / 2;
+                            const centerY = y + height / 2;
 
-                    // Process through rule engine
-                    const event = ruleEngineRef.current.processDetections(detections);
+                            // Determine if ball touched ground (bottom 30% of frame)
+                            const frameHeight = video.videoHeight;
+                            const groundLine = frameHeight * 0.7;
+                            const touchedGround = centerY > groundLine;
 
-                    // If event detected, update score
-                    if (event) {
-                        await scoringEngineRef.current.processEvent(
-                            event,
-                            'batsman-1',
-                            'bowler-1'
-                        );
+                            // Add to trajectory
+                            trajectory.current.push({ x: centerX, y: centerY, touchedGround });
 
-                        // Show toast for event
-                        if (event.type === 'SCORING') {
-                            const scoringEvent = event as unknown as { runs: number; boundaryType?: string };
-                            toast.success(`${scoringEvent.runs} runs!`, {
-                                description: scoringEvent.boundaryType || 'Runs scored',
-                            });
-                        } else if (event.type === 'DISMISSAL') {
-                            const dismissalEvent = event as unknown as { dismissalType: string };
-                            toast.error(`Wicket!`, {
-                                description: dismissalEvent.dismissalType,
-                            });
+                            // Keep trajectory manageable (last 30 frames = 1 second at 30fps)
+                            if (trajectory.current.length > 30) {
+                                trajectory.current.shift();
+                            }
+
+                            // Analyze for boundary scoring
+                            analyzeForBoundary(trajectory.current, video.videoWidth, video.videoHeight);
                         }
-                    }
-
-                    // Get AI prediction every 5 seconds
-                    const now = Date.now();
-                    if (now - lastPredictionTime.current > 5000) {
-                        try {
-                            const pred = await predictionEngine.predictNextBall(
-                                bookingId || 'match-1',
-                                'batsman-1',
-                                'bowler-1'
-                            );
-                            setPrediction(pred);
-                            lastPredictionTime.current = now;
-                        } catch (error) {
-                            // Prediction failed, continue
-                        }
+                    } catch (error) {
+                        console.error("Detection error:", error);
                     }
                 }
-            } catch (error) {
-                console.error("Detection error:", error);
             }
-
-            detectionLoopRef.current = requestAnimationFrame(detect);
+            animationFrameId = requestAnimationFrame(detect);
         };
 
-        detect();
-    };
-
-    const lastPredictionTime = useRef(0);
-
-    const stopDetectionLoop = () => {
-        if (detectionLoopRef.current) {
-            cancelAnimationFrame(detectionLoopRef.current);
-        }
-    };
-
-    // Draw detections on canvas
-    const drawDetections = (detections: any) => {
-        if (!canvasRef.current || !videoRef.current) return;
-
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw ball
-        if (detections.ball.length > 0) {
-            detections.ball.forEach((ball: any) => {
-                ctx.strokeStyle = '#FF0000';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(ball.bbox[0], ball.bbox[1], ball.bbox[2], ball.bbox[3]);
-                ctx.fillStyle = '#FF0000';
-                ctx.font = '16px Arial';
-                ctx.fillText('Ball', ball.bbox[0], ball.bbox[1] - 5);
-            });
+        if (aiActive && isPlaying) {
+            detect();
+        } else {
+            trajectory.current = [];
         }
 
-        // Draw players
-        if (detections.players.length > 0) {
-            detections.players.forEach((player: any) => {
-                ctx.strokeStyle = player.isBatsman ? '#00FF00' : '#0000FF';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(player.bbox[0], player.bbox[1], player.bbox[2], player.bbox[3]);
-                ctx.fillStyle = player.isBatsman ? '#00FF00' : '#0000FF';
-                ctx.font = '14px Arial';
-                ctx.fillText(player.isBatsman ? 'Batsman' : 'Fielder', player.bbox[0], player.bbox[1] - 5);
-            });
-        }
-    };
+        return () => cancelAnimationFrame(animationFrameId);
+    }, [aiActive, isPlaying, model, battingTeam]);
 
-    // End match
-    const endMatch = async () => {
-        if (scoringEngineRef.current) {
-            await scoringEngineRef.current.endMatch();
+    const analyzeForBoundary = (points: { x: number, y: number, touchedGround: boolean }[], frameWidth: number, frameHeight: number) => {
+        if (points.length < 5) return;
 
-            // Update career stats
-            await careerEngine.updatePlayerCareer('batsman-1');
-            await careerEngine.updatePlayerCareer('bowler-1');
+        const now = Date.now();
+        // Prevent duplicate scoring (3 second cooldown)
+        if (now - lastScoringTime.current < 3000) return;
 
-            toast.success("Match ended! Stats updated.");
-            navigate('/dashboard');
+        const lastPoint = points[points.length - 1];
+
+        // Define boundary zones (outer 10% of frame)
+        const boundaryLeft = frameWidth * 0.1;
+        const boundaryRight = frameWidth * 0.9;
+        const boundaryTop = frameHeight * 0.2;
+
+        // Check if ball crossed boundary
+        const crossedBoundary =
+            lastPoint.x < boundaryLeft ||
+            lastPoint.x > boundaryRight ||
+            lastPoint.y < boundaryTop;
+
+        if (crossedBoundary) {
+            // Check if ball touched ground during trajectory
+            const touchedGround = points.some(p => p.touchedGround);
+
+            if (touchedGround) {
+                // Ball touched ground then crossed boundary = 4 runs
+                updateScore(battingTeam, 'runs', 4);
+                toast.success("FOUR!", { description: "Ball crossed boundary after touching ground" });
+            } else {
+                // Ball crossed boundary directly = 6 runs
+                updateScore(battingTeam, 'runs', 6);
+                toast.success("SIX!", { description: "Ball crossed boundary in the air" });
+            }
+
+            lastScoringTime.current = now;
+            trajectory.current = []; // Reset trajectory
         }
     };
 
@@ -278,6 +177,48 @@ const MatchMode = () => {
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
+
+    const toggleMatch = () => {
+        setIsPlaying(!isPlaying);
+        if (!isPlaying) {
+            toast.success("Match started!");
+        } else {
+            toast.info("Match paused");
+        }
+    };
+
+    const toggleAI = () => {
+        setAiActive(!aiActive);
+        if (!aiActive) {
+            toast.success("AI Detection Activated", { description: "Automatic boundary detection enabled" });
+        } else {
+            toast.info("AI Detection Deactivated");
+        }
+    };
+
+    const endMatch = () => {
+        setIsPlaying(false);
+        setAiActive(false);
+        toast.success("Match ended!");
+        navigate('/dashboard');
+    };
+
+    const updateScore = (team: 'teamA' | 'teamB', type: 'runs' | 'wickets' | 'overs', delta: number) => {
+        setScores(prev => ({
+            ...prev,
+            [team]: {
+                ...prev[team],
+                [type]: Math.max(0, prev[team][type] + delta)
+            }
+        }));
+    };
+
+    const switchInnings = () => {
+        setBattingTeam(prev => prev === 'teamA' ? 'teamB' : 'teamA');
+        toast.info(`${battingTeam === 'teamA' ? 'Team B' : 'Team A'} is now batting`);
+    };
+
+    const currentBattingScore = scores[battingTeam];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -295,9 +236,16 @@ const MatchMode = () => {
                         Back to Dashboard
                     </Button>
 
-                    <div className="flex items-center gap-2">
-                        <Activity className={`w-5 h-5 ${isPlaying ? 'text-green-500 animate-pulse' : 'text-gray-500'}`} />
-                        <span className="text-[#F5F5DC] text-sm">{systemStatus}</span>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Activity className={`w-5 h-5 ${aiActive ? 'text-green-500 animate-pulse' : 'text-gray-500'}`} />
+                            <span className="text-[#F5F5DC] text-sm">
+                                {aiActive ? 'AI Active' : 'AI Inactive'}
+                            </span>
+                        </div>
+                        <div className="text-[#F5F5DC] text-lg font-semibold">
+                            Match Time: {formatTime(timer)}
+                        </div>
                     </div>
                 </div>
 
@@ -314,24 +262,59 @@ const MatchMode = () => {
                                 <h2 className="text-2xl font-bold text-[#F5F5DC]">Live Camera Feed</h2>
                                 <div className="flex items-center gap-2">
                                     <Video className="w-5 h-5 text-[#8B0000]" />
-                                    <span className="text-sm text-[#F5F5DC]/70">AI Detection Active</span>
+                                    <span className="text-sm text-[#F5F5DC]/70">
+                                        {isPlaying ? 'Recording' : 'Ready'}
+                                    </span>
                                 </div>
                             </div>
 
                             <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
+                                <Webcam
+                                    ref={webcamRef}
+                                    audio={false}
+                                    videoConstraints={{
+                                        deviceId: selectedDeviceId,
+                                        width: 1280,
+                                        height: 720,
+                                    }}
                                     className="w-full h-full object-cover"
                                 />
-                                <canvas
-                                    ref={canvasRef}
-                                    width={1280}
-                                    height={720}
-                                    className="absolute top-0 left-0 w-full h-full"
-                                />
+
+                                {/* Boundary Zone Indicators */}
+                                {aiActive && (
+                                    <>
+                                        <div className="absolute top-0 left-0 right-0 h-[20%] border-2 border-red-500/30 pointer-events-none">
+                                            <span className="absolute top-2 left-2 text-red-500 text-xs bg-black/50 px-2 py-1 rounded">
+                                                Boundary Zone (6)
+                                            </span>
+                                        </div>
+                                        <div className="absolute bottom-0 left-0 right-0 h-[30%] border-2 border-yellow-500/30 pointer-events-none">
+                                            <span className="absolute bottom-2 left-2 text-yellow-500 text-xs bg-black/50 px-2 py-1 rounded">
+                                                Ground Zone (4)
+                                            </span>
+                                        </div>
+                                        <div className="absolute top-0 left-0 bottom-0 w-[10%] border-2 border-red-500/30 pointer-events-none" />
+                                        <div className="absolute top-0 right-0 bottom-0 w-[10%] border-2 border-red-500/30 pointer-events-none" />
+                                    </>
+                                )}
+
+                                {/* Camera Selection */}
+                                {devices.length > 1 && (
+                                    <div className="absolute top-4 right-4 z-10">
+                                        <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId}>
+                                            <SelectTrigger className="w-[200px] bg-gray-900/80 text-[#F5F5DC] border-[#8B0000]">
+                                                <SelectValue placeholder="Select Camera" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {devices.map((device) => (
+                                                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                                                        {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
 
                                 {!isPlaying && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -363,6 +346,15 @@ const MatchMode = () => {
                                 </Button>
 
                                 <Button
+                                    onClick={toggleAI}
+                                    disabled={!model}
+                                    className={`flex-1 ${aiActive ? 'bg-green-600' : 'bg-gray-600'} text-[#F5F5DC]`}
+                                >
+                                    <Activity className="w-5 h-5 mr-2" />
+                                    {aiActive ? 'AI On' : 'AI Off'}
+                                </Button>
+
+                                <Button
                                     onClick={endMatch}
                                     variant="outline"
                                     className="border-[#8B0000] text-[#F5F5DC]"
@@ -374,7 +366,7 @@ const MatchMode = () => {
                         </motion.div>
                     </div>
 
-                    {/* Scoreboard & Stats */}
+                    {/* Scoreboard & Controls */}
                     <div className="space-y-6">
                         {/* Live Score */}
                         <motion.div
@@ -383,86 +375,156 @@ const MatchMode = () => {
                             className="bg-gradient-to-r from-[#8B0000] to-[#A52A2A] rounded-2xl p-6"
                         >
                             <h3 className="text-xl font-bold text-[#F5F5DC] mb-4">Live Score</h3>
-                            {liveScore ? (
-                                <>
-                                    <div className="text-center mb-4">
-                                        <div className="text-5xl font-bold text-[#F5F5DC]">
-                                            {liveScore.battingTeam === 'TEAM_A' ? liveScore.teamAScore : liveScore.teamBScore}/
-                                            {liveScore.battingTeam === 'TEAM_A' ? liveScore.teamAWickets : liveScore.teamBWickets}
-                                        </div>
-                                        <div className="text-[#F5F5DC]/80 mt-2">
-                                            {liveScore.currentOver}.{liveScore.currentBall} overs
-                                        </div>
-                                    </div>
-
-                                    {liveScore.lastEvent && (
-                                        <div className="bg-white/10 rounded-lg p-3 text-center">
-                                            <p className="text-[#F5F5DC] text-sm">{liveScore.lastEvent}</p>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="text-center text-[#F5F5DC]/70">
-                                    Waiting for match to start...
+                            <div className="text-center mb-4">
+                                <div className="text-5xl font-bold text-[#F5F5DC]">
+                                    {currentBattingScore.runs}/{currentBattingScore.wickets}
+                                </div>
+                                <div className="text-[#F5F5DC]/80 mt-2">
+                                    {currentBattingScore.overs.toFixed(1)} overs
+                                </div>
+                                <div className="text-sm text-[#F5F5DC]/60 mt-1">
+                                    {battingTeam === 'teamA' ? 'Team A' : 'Team B'} Batting
+                                </div>
+                            </div>
+                            {aiActive && (
+                                <div className="bg-white/10 rounded-lg p-2 text-center">
+                                    <p className="text-[#F5F5DC] text-xs">
+                                        🤖 AI Auto-Scoring Active
+                                    </p>
                                 </div>
                             )}
                         </motion.div>
 
-                        {/* AI Prediction */}
-                        {prediction && (
-                            <motion.div
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
-                            >
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Target className="w-5 h-5 text-[#8B0000]" />
-                                    <h3 className="text-lg font-bold text-[#F5F5DC]">AI Prediction</h3>
+                        {/* Manual Controls */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
+                        >
+                            <h3 className="text-lg font-bold text-[#F5F5DC] mb-4">Manual Controls</h3>
+
+                            {/* Batting Team Controls */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[#F5F5DC]">Runs</span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => updateScore(battingTeam, 'runs', -1)}
+                                            className="border-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => updateScore(battingTeam, 'runs', 1)}
+                                            className="bg-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            +1
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => updateScore(battingTeam, 'runs', 4)}
+                                            className="bg-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            +4
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => updateScore(battingTeam, 'runs', 6)}
+                                            className="bg-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            +6
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <div className="text-2xl font-bold text-[#8B0000]">
-                                        {prediction.outcome}
-                                    </div>
-                                    <div className="text-sm text-[#F5F5DC]/70">
-                                        Probability: {(prediction.probability * 100).toFixed(1)}%
-                                    </div>
-                                    <div className="text-sm text-[#F5F5DC]/70">
-                                        {prediction.reasoning}
+
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[#F5F5DC]">Wickets</span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => updateScore(battingTeam, 'wickets', -1)}
+                                            className="border-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => updateScore(battingTeam, 'wickets', 1)}
+                                            className="bg-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
+
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[#F5F5DC]">Overs</span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => updateScore(battingTeam, 'overs', -0.1)}
+                                            className="border-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => updateScore(battingTeam, 'overs', 0.1)}
+                                            className="bg-[#8B0000] text-[#F5F5DC]"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={switchInnings}
+                                    className="w-full bg-gradient-to-r from-[#8B0000] to-[#A52A2A] text-[#F5F5DC] mt-4"
+                                >
+                                    Switch Innings
+                                </Button>
+                            </div>
+                        </motion.div>
 
                         {/* Team Scores */}
-                        {liveScore && (
-                            <motion.div
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
-                            >
-                                <h3 className="text-lg font-bold text-[#F5F5DC] mb-4">Teams</h3>
-                                <div className="space-y-3">
-                                    <div className={`p-3 rounded-lg ${liveScore.battingTeam === 'TEAM_A' ? 'bg-[#8B0000]/20 border border-[#8B0000]' : 'bg-gray-700/30'}`}>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[#F5F5DC] font-semibold">Team A</span>
-                                            <span className="text-[#F5F5DC] text-xl font-bold">
-                                                {liveScore.teamAScore}/{liveScore.teamAWickets}
-                                            </span>
-                                        </div>
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-[#8B0000]/30"
+                        >
+                            <h3 className="text-lg font-bold text-[#F5F5DC] mb-4">Teams</h3>
+                            <div className="space-y-3">
+                                <div className={`p-3 rounded-lg ${battingTeam === 'teamA' ? 'bg-[#8B0000]/20 border border-[#8B0000]' : 'bg-gray-700/30'}`}>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[#F5F5DC] font-semibold">Team A</span>
+                                        <span className="text-[#F5F5DC] text-xl font-bold">
+                                            {scores.teamA.runs}/{scores.teamA.wickets}
+                                        </span>
                                     </div>
-                                    <div className={`p-3 rounded-lg ${liveScore.battingTeam === 'TEAM_B' ? 'bg-[#8B0000]/20 border border-[#8B0000]' : 'bg-gray-700/30'}`}>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[#F5F5DC] font-semibold">Team B</span>
-                                            <span className="text-[#F5F5DC] text-xl font-bold">
-                                                {liveScore.teamBScore}/{liveScore.teamBWickets}
-                                            </span>
-                                        </div>
+                                    <div className="text-sm text-[#F5F5DC]/60 mt-1">
+                                        {scores.teamA.overs.toFixed(1)} overs
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
+                                <div className={`p-3 rounded-lg ${battingTeam === 'teamB' ? 'bg-[#8B0000]/20 border border-[#8B0000]' : 'bg-gray-700/30'}`}>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[#F5F5DC] font-semibold">Team B</span>
+                                        <span className="text-[#F5F5DC] text-xl font-bold">
+                                            {scores.teamB.runs}/{scores.teamB.wickets}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-[#F5F5DC]/60 mt-1">
+                                        {scores.teamB.overs.toFixed(1)} overs
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
                 </div>
             </div>
