@@ -451,7 +451,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Yash Bachwani** - *Project Owner*
+- **Yash Bachwani & Mustafa Khericha** - *Project Owner*
 - **AI Assistant (Antigravity)** - *Development*
 
 ## 🙏 Acknowledgments
