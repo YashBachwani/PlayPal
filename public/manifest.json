@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "PlayPal",
+    "version": "1.0.0",
+    "description": "Your One Stop for Sports & Sport Partners. Book venues, find players, and join tournaments.",
+    "action": {
+        "default_icon": {
+            "16": "placeholder.svg",
+            "48": "placeholder.svg",
+            "128": "placeholder.svg"
+        },
+        "default_title": "Open PlayPal"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "permissions": [
+        "tabs"
+    ],
+    "icons": {
+        "16": "placeholder.svg",
+        "48": "placeholder.svg",
+        "128": "placeholder.svg"
+    }
+}

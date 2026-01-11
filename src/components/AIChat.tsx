@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { MessageCircle, X, Send, Bot, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { venues, searchVenues, gujaratCities } from "@/data/venues";
 
 interface Message {
   id: string;
@@ -11,11 +11,20 @@ interface Message {
   timestamp: Date;
 }
 
+type BookingState = "IDLE" | "BOOKING_INTENT" | "AWAITING_SPORT" | "AWAITING_CITY" | "AWAITING_DATE" | "AWAITING_CONFIRMATION" | "BOOKED";
+
+interface BookingData {
+  sport: string;
+  city: string;
+  date: string;
+  venueId: string;
+}
+
 const quickPrompts = [
   "Book a cricket slot",
-  "Find players nearby",
-  "Badminton courts available?",
-  "Any tournaments this weekend?",
+  "Tennis courts nearby?",
+  "Find football turfs",
+  "Badminton in Ahmedabad",
 ];
 
 const AIChat = () => {
@@ -24,12 +33,20 @@ const AIChat = () => {
     {
       id: "1",
       role: "assistant",
-      content: "Hey! 👋 I'm your PlayPal AI assistant. I can help you book venues, find players, or answer any sports-related questions. What would you like to do today?",
+      content: "Hello! 👋 How can I help you book your next game or find a sports slot today?",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [bookingState, setBookingState] = useState<BookingState>("IDLE");
+  const [bookingData, setBookingData] = useState<BookingData>({
+    sport: "",
+    city: "",
+    date: "",
+    venueId: "",
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -43,26 +60,91 @@ const AIChat = () => {
   const generateResponse = (userMessage: string): string => {
     const lower = userMessage.toLowerCase();
 
-    if (lower.includes("cricket")) {
-      return "🏏 Great choice! I found 5 cricket turfs near you in Ahmedabad. The best option is **Elite Cricket Arena** in Satellite - it has slots available at 6 PM and 8 PM today for ₹1,200/hour. Would you like me to book one?";
-    }
-    if (lower.includes("book") || lower.includes("slot")) {
-      return "📅 I'd love to help you book! Which sport are you interested in? Cricket, Football, Badminton, Tennis, or Pickleball?";
-    }
-    if (lower.includes("player") || lower.includes("find")) {
-      return "👥 I found 12 players looking to play near you! 4 are looking for cricket partners, 5 for football, and 3 for badminton. Want me to show you compatible players based on your skill level?";
-    }
-    if (lower.includes("badminton")) {
-      return "🏸 There are 3 badminton courts available nearby! **Shuttle Masters** in Prahladnagar has the best rating (4.9★) with slots at ₹400/hour. It's only 1.8 km away. Shall I book it?";
-    }
-    if (lower.includes("tournament")) {
-      return "🏆 Exciting! There are 2 tournaments this weekend:\n\n1. **Cricket Premier League** - Saturday, ₹500 entry, ₹10,000 prize pool\n2. **Badminton Open** - Sunday, Free entry, Trophy + ₹5,000\n\nWant me to register you for any?";
-    }
-    if (lower.includes("weather")) {
-      return "☀️ Today in Ahmedabad: 32°C, Sunny with clear skies. Perfect for outdoor sports! However, I'd recommend evening slots (after 5 PM) to avoid the heat.";
+    // Context Reset / Exit
+    if (lower.includes("exit") || lower.includes("cancel") || lower.includes("stop")) {
+      setBookingState("IDLE");
+      return "No problem! Let me know if you need anything else. How can I help you today?";
     }
 
-    return "I understand! Let me help you with that. Could you tell me which sport you're interested in and your preferred time? I'll find the best options for you.";
+    // State Machine
+    switch (bookingState) {
+      case "IDLE":
+        if (lower.includes("book") || lower.includes("slot") || lower.includes("play")) {
+          setBookingState("BOOKING_INTENT");
+
+          // Check if they already provided some info
+          let detectedSport = "";
+          ["cricket", "football", "badminton", "tennis", "pickleball"].forEach(s => {
+            if (lower.includes(s)) detectedSport = s.charAt(0).toUpperCase() + s.slice(1);
+          });
+
+          if (detectedSport) {
+            setBookingData(prev => ({ ...prev, sport: detectedSport }));
+            setBookingState("AWAITING_CITY");
+            return "Great! Let’s find the right slot for you. Which city are you in? (e.g., Ahmedabad, Surat)";
+          }
+
+          return "Great! Let’s find the right slot for you. Which sport are you interested in?";
+        }
+        return "I'm here to help! You can ask me to book a slot, find players nearby, or check tournament details. What's on your mind?";
+
+      case "BOOKING_INTENT":
+      case "AWAITING_SPORT":
+        const sports = ["cricket", "football", "badminton", "tennis", "pickleball"];
+        const foundSport = sports.find(s => lower.includes(s));
+        if (foundSport) {
+          const sportName = foundSport.charAt(0).toUpperCase() + foundSport.slice(1);
+          setBookingData(prev => ({ ...prev, sport: sportName }));
+          setBookingState("AWAITING_CITY");
+          return `Awesome, ${sportName}! 🏏 Which city are you looking to play in? (e.g., Ahmedabad, Surat)`;
+        }
+        return "I'm not sure which sport that is. We have Cricket, Football, Badminton, Tennis, and Pickleball! Which one would you like?";
+
+      case "AWAITING_CITY":
+        const foundCity = gujaratCities.find(c => lower.includes(c.name.toLowerCase()));
+        if (foundCity) {
+          setBookingData(prev => ({ ...prev, city: foundCity.name }));
+          setBookingState("AWAITING_DATE");
+          return `Perfect, ${foundCity.name} has some great venues! For which date would you like to book? (e.g., Today, Tomorrow, or Saturday)`;
+        }
+        return `I couldn't find matches in that location. We currently support ${gujaratCities.slice(0, 5).map(c => c.name).join(", ")} and more. Where are you located?`;
+
+      case "AWAITING_DATE":
+        setBookingData(prev => ({ ...prev, date: userMessage }));
+        const searchResults = searchVenues("", bookingData.city).filter(v =>
+          v.sports.includes(bookingData.sport)
+        );
+
+        if (searchResults.length > 0) {
+          const venue = searchResults[0];
+          setBookingData(prev => ({ ...prev, venueId: venue.id }));
+          setBookingState("AWAITING_CONFIRMATION");
+          return `Good news! ${venue.name} in ${venue.location} has slots available for ${bookingData.sport} on ${userMessage}.\n\nIt's rated ${venue.rating}⭐ and costs ₹${venue.pricePerHour}/hour. Would you like to confirm this booking?`;
+        } else {
+          // Suggest alternative in same city
+          const otherVenues = searchVenues("", bookingData.city).slice(0, 2);
+          if (otherVenues.length > 0) {
+            return `Sorry, I couldn't find a ${bookingData.sport} slot in that specific area. How about checking out ${otherVenues.map(v => v.name).join(" or ")}? They have great facilities! Or would you like to try another date?`;
+          }
+          setBookingState("IDLE");
+          return `I'm sorry, I couldn't find any suitable slots for ${bookingData.sport} in ${bookingData.city} right now. Would you like to try a different sport or city?`;
+        }
+
+      case "AWAITING_CONFIRMATION":
+        if (lower.includes("yes") || lower.includes("sure") || lower.includes("confirm") || lower.includes("okay")) {
+          setBookingState("BOOKED");
+          return "Your slot is booked! 🎉 You’ll receive a confirmation shortly on your registered mobile number. See you on the field!";
+        }
+        setBookingState("IDLE");
+        return "No problem, I've canceled the request. Let me know if you want to look for something else!";
+
+      case "BOOKED":
+        setBookingState("IDLE");
+        return "Your previous booking is all set! Want to find another game or find some players nearby?";
+
+      default:
+        return "I'm here to help! Would you like to book a slot or find players?";
+    }
   };
 
   const handleSend = () => {
@@ -89,7 +171,7 @@ const AIChat = () => {
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setIsTyping(false);
-    }, 1000 + Math.random() * 1000);
+    }, 800 + Math.random() * 500);
   };
 
   const handleQuickPrompt = (prompt: string) => {
@@ -134,7 +216,7 @@ const AIChat = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold">PlayPal AI</h3>
-                  <p className="text-xs opacity-80">Always here to help</p>
+                  <p className="text-xs opacity-80">Online & Ready to Book</p>
                 </div>
               </div>
               <button
@@ -146,7 +228,7 @@ const AIChat = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/30">
               {messages.map((message) => (
                 <motion.div
                   key={message.id}
@@ -156,23 +238,26 @@ const AIChat = () => {
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background border border-border text-foreground shadow-sm"
                       }`}
                   >
                     {message.role === "user" ? (
                       <User className="w-4 h-4" />
                     ) : (
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-4 h-4 text-primary" />
                     )}
                   </div>
                   <div
-                    className={`max-w-[75%] p-3 rounded-2xl ${message.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-tr-none"
-                        : "bg-secondary text-secondary-foreground rounded-tl-none"
+                    className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${message.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                      : "bg-card text-foreground border border-border rounded-tl-none"
                       }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    <span className="text-[10px] opacity-50 mt-1 block text-right">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </motion.div>
               ))}
@@ -183,16 +268,16 @@ const AIChat = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-secondary-foreground" />
+                  <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center shadow-sm">
+                    <Sparkles className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="px-4 py-3 rounded-2xl rounded-tl-none bg-secondary">
+                  <div className="px-4 py-3 rounded-2xl rounded-tl-none bg-card border border-border shadow-sm">
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
                         <motion.div
                           key={i}
-                          className="w-2 h-2 rounded-full bg-muted-foreground"
-                          animate={{ y: [0, -5, 0] }}
+                          className="w-2 h-2 rounded-full bg-primary/40"
+                          animate={{ y: [0, -4, 0] }}
                           transition={{
                             duration: 0.6,
                             repeat: Infinity,
@@ -208,12 +293,12 @@ const AIChat = () => {
             </div>
 
             {/* Quick Prompts */}
-            <div className="px-4 pb-2 flex gap-2 overflow-x-auto">
+            <div className="px-4 py-3 border-t border-border flex gap-2 overflow-x-auto bg-card">
               {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => handleQuickPrompt(prompt)}
-                  className="px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-medium whitespace-nowrap hover:bg-secondary/80 transition-colors"
+                  className="px-3 py-1.5 rounded-full bg-secondary/80 text-secondary-foreground text-xs font-semibold whitespace-nowrap hover:bg-primary hover:text-primary-foreground transition-all border border-border/50"
                 >
                   {prompt}
                 </button>
@@ -221,20 +306,20 @@ const AIChat = () => {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-border bg-card">
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="Ask me anything..."
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-secondary text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Type your message..."
+                  className="flex-1 px-4 py-3 rounded-xl bg-secondary/50 text-foreground placeholder:text-muted-foreground outline-none border border-transparent focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all text-sm"
                 />
                 <Button
                   onClick={handleSend}
                   size="icon"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-[46px] w-[46px] shadow-lg shadow-primary/20"
                   disabled={!input.trim()}
                 >
                   <Send className="w-4 h-4" />
